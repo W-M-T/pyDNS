@@ -51,4 +51,13 @@ class Zone(object):
         Args:
             filename (str): the filename of the master file
         """
-        pass
+        try:
+            with open(filename) as infile:
+                data = infile.read()
+                self.parse_and_load(data)
+        except IOError, e:
+            print("An error has occured while reading the zone from file: " \
+                + str(filename) + " - " str(e))
+
+    def parse_and_load(self, content):
+        #Insert zieke regex shizzle
