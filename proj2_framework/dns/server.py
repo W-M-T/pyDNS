@@ -26,6 +26,7 @@ class RequestHandler(Thread):
 
 class Server(object):
     """ A recursive DNS server """
+    done = False
 
     def __init__(self, port, caching, ttl):
         """ Initialize the server
