@@ -69,11 +69,8 @@ class Zone(object):
                 + str(filename) + " - " + str(e))
 
     def parse_and_load(self, content):
-        #Remove comments
-        content = re.sub(re.compile(";.*?\n"), "\n", content)
-        #Remove whitespaces
-        content = re.sub(re.compile("\n\n*\n") , "\n", content)
-        #Remove indentation
+        content = re.sub(re.compile(";.*?\n"), "\n", content) #Remove comments
+        content = re.sub(re.compile("\n\n*\n") , "\n", content) #Remove whitespaces
         content = re.sub(re.compile("  * ") , " ", content) #Remove multiple spaces between words
         content = re.sub(re.compile("\t\t*\t") , " ", content) #Remove tabs between words
         content = re.sub(re.compile("\n *") , "\n", content) #Remove spaces at start of line
