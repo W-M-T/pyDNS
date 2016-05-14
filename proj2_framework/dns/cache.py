@@ -103,6 +103,7 @@ class RecordCache(object):
                 self.records = json.loads(data, object_hook=resource_from_json)
         except (ValueError, IOError), e:
             print("An error has occured while loading cache from disk: " + str(e))
+            #Gaat dit al fout als de file niet bestaat?
 
 
     def write_cache_file(self):
