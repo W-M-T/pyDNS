@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+import re
 
 """ Zones of domain name space 
 
@@ -9,7 +10,15 @@ zones or record sets.
 These classes are merely a suggestion, feel free to use something else.
 """
 
-
+#content = open('test.txt').read()
+#content = re.sub(re.compile(";.*?\n"), "\n", content)
+#content = re.sub(re.compile("\n\n*\n") , "\n", content)
+#Remove indentation
+#content = re.sub(re.compile("  * ") , " ", content) #Remove multiple spaces between words
+#content = re.sub(re.compile("\t\t*\t") , " ", content) #Remove tabs between words
+#content = re.sub(re.compile("\n *") , "\n", content) #Remove spaces at start of line
+#content = re.sub(re.compile("\n\t*") , "\n", content) #Remove tabs at start of line
+#print(content)
 class Catalog(object):
     """ A catalog of zones """
 
@@ -57,7 +66,16 @@ class Zone(object):
                 self.parse_and_load(data)
         except IOError, e:
             print("An error has occured while reading the zone from file: " \
-                + str(filename) + " - " str(e))
+                + str(filename) + " - " + str(e))
 
     def parse_and_load(self, content):
-        #Insert zieke regex shizzle
+        #Remove comments
+        content = re.sub(re.compile(";.*?\n"), "\n", content)
+        #Remove whitespaces
+        content = re.sub(re.compile("\n\n*\n") , "\n", content)
+        #Remove indentation
+        content = re.sub(re.compile("  * ") , " ", content) #Remove multiple spaces between words
+        content = re.sub(re.compile("\t\t*\t") , " ", content) #Remove tabs between words
+        content = re.sub(re.compile("\n *") , "\n", content) #Remove spaces at start of line
+        content = re.sub(re.compile("\n\t*") , "\n", content) #Remove tabs at start of line
+
