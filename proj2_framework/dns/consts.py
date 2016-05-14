@@ -1,3 +1,4 @@
+#List of root server IPs
 ROOT_SERVERS = [
 	198.41.0.4,		#A
 	192.228.79.201, #B
@@ -13,3 +14,6 @@ ROOT_SERVERS = [
 	199.7.83.42,	#L
 	202.12.27.33	#M
 ]
+
+#Relative path to the cache file's location on disk
+CACHE_FILE = "cache.json"

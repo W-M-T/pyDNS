@@ -13,7 +13,7 @@ import json
 from dns.resource import ResourceRecord, RecordData
 from dns.types import Type
 from dns.classes import Class
-
+import dns.consts as Consts
 
 class ResourceEncoder(json.JSONEncoder):
     """ Conver ResourceRecord to JSON
@@ -70,7 +70,16 @@ class RecordCache(object):
             type_ (Type): type
             class_ (Class): class
         """
-        pass
+        #Hier doen dat als hij een hit heeft maar de TTL verlopen is
+        #dat hij dan onthoudt dat hij hem eruit moet gooien als hij
+        #klaar is met itereren? We kunnen ook doen dat iets (anders)
+        #actief #de TTLs zit te bekijken en oude er uit gooit.
+        for entry in self.records:
+            if entry.dname == dname and \
+                entry.type_ == type_ and \
+                entry.class_ == class_:
+                return entry
+        return None
     
     def add_record(self, record):
         """ Add a new Record to the cache
@@ -78,14 +87,22 @@ class RecordCache(object):
         Args:
             record (ResourceRecord): the record added to the cache
         """
-        pass
+        self.records.append(record)
     
     def read_cache_file(self):
         """ Read the cache file from disk """
-        pass
+        #Empty current cache
+        self.records = []
+
+        #Load from file
+        with open(Consts.CACHE_FILE) as infile:    
+            data = json.load(infile)
+            for entry in data:
+                record = self.resource_from_json(entry)
+                self.add_record(record)
+
 
     def write_cache_file(self):
         """ Write the cache file to disk """
-        pass
-
-
+        with open(Consts.CACHE_FILE, 'w') as outfile:
+            json.dump(self.records, outfile)
