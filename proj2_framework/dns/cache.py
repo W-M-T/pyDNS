@@ -70,16 +70,15 @@ class RecordCache(object):
             type_ (Type): type
             class_ (Class): class
         """
+        results = []
         #Hier doen dat als hij een hit heeft maar de TTL verlopen is
         #dat hij dan onthoudt dat hij hem eruit moet gooien als hij
         #klaar is met itereren? We kunnen ook doen dat iets (anders)
-        #actief #de TTLs zit te bekijken en oude er uit gooit.
+        #actief de TTLs zit te bekijken en oude er uit gooit.
         for entry in self.records:
-            if entry.dname == dname and \
-                entry.type_ == type_ and \
-                entry.class_ == class_:
-                return entry
-        return None
+            if entry.dname == dname and entry.type_ == type_ and entry.class_ == class_:
+                results.append(entry)
+        return results
     
     def add_record(self, record):
         """ Add a new Record to the cache
@@ -87,7 +86,10 @@ class RecordCache(object):
         Args:
             record (ResourceRecord): the record added to the cache
         """
-        self.records.append(record)
+        #Only append if not already in cache
+        #TODO: iets met TTL?
+        if self.lookup(record.name, record.type_, record.class_) == []:
+            self.records.append(record)
     
     def read_cache_file(self):
         """ Read the cache file from disk """
@@ -95,14 +97,18 @@ class RecordCache(object):
         self.records = []
 
         #Load from file
-        with open(Consts.CACHE_FILE) as infile:    
-            data = json.load(infile)
-            for entry in data:
-                record = self.resource_from_json(entry)
-                self.add_record(record)
+        try:
+            with open(Consts.CACHE_FILE) as infile:    
+                data = infile.read()
+                self.records = json.loads(data, object_hook=resource_from_json)
+        except (ValueError, IOError), e:
+            print("An error has occured while loading cache from disk: " + str(e))
 
 
     def write_cache_file(self):
         """ Write the cache file to disk """
-        with open(Consts.CACHE_FILE, 'w') as outfile:
-            json.dump(self.records, outfile)
+        try:
+            with open(Consts.CACHE_FILE, 'w') as outfile:
+                outfile.write(string = json.dumps(records, cls=ResourceEncoder, indent=4))
+        except IOError, e:
+            print("An error has occured while writing cache to disk: " + str(e))
