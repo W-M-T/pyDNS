@@ -30,7 +30,7 @@ class Resolver(object):
         self.ttl = ttl
         self.identifier = random.randint(0, 65535)
         if self.caching:
-			self.cache = RecordCache.read_cache_file()
+            self.cache = RecordCache.read_cache_file()
 
 
 
@@ -76,37 +76,37 @@ class Resolver(object):
         return hostname, aliases, addresses
 
 	def save_cache():
-		if self.caching:
-			if self.cache is not None:
-				self.cache.write_cache_file()
+            if self.caching:
+                if self.cache is not None:
+                    self.cache.write_cache_file()
 
     def gethostbyname(self, hostname):
-   		aliaslist = []
-   		ipaddrlist = []
+        aliaslist = []
+        ipaddrlist = []
+        '''
+        #0. Check if hostname is a valid FQDN.
+        valid = is_valid_hostname(hostname)
+        if valid:
+            if hostname not in[valid[0], valid[0] + "."]:
+                return hostname, [], []
 
-   		#0. Check if hostname is a valid FQDN.
-   		valid = is_valid_hostname(hostname)
-   		if valid:
-   			if hostname not in[valid[0], valid[0] + "."]:
-   				return hostname, [], []
+        #1. See if the answer is in local information, and if so return it to the client.
+        #TODO: check of we authorative zijn. Zo ja, geef dat ipv resultaat uit cache
+        if self.caching:   		
+            if self.cache is None:
+                self.cache = RecordCache.read_cache_file()	
 
-   		#1. See if the answer is in local information, and if so return it to the client.
-   		#TODO: check of we authorative zijn. Zo ja, geef dat ipv resultaat uit cache
-   		if self.caching:   		
-   			if self.cache is None:
-   				self.cache = RecordCache.read_cache_file()	
+            for alias in self.cache.lookup(hostname, Type.CNAME, Class.IN):
+                aliaslist.append(alias)
+            
+            for address in self.cache.lookup(hostname, Type.A, Class.IN):
+                ipaddrlist.append(address)
 
-   			for alias in self.cache.lookup(hostname, Type.CNAME, Class.IN):
-   				aliaslist.append(alias)
-   			
-   			for address in self.cache.lookup(hostname, Type.A, Class.IN):
-   				ipaddrlist.append(address)
+        if ipaddrlist is not []:
+            return hostname, aliaslist, ipaddrlist
 
-   		if ipaddrlist is not []:
-   			return hostname, aliaslist, ipaddrlist
-
-		#2. Find the best servers to ask.
-		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        #2. Find the best servers to ask.
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.settimeout(self.timeout)
 
         identifier = (self.identifier + random.randint(1,2048)) % 25535
@@ -120,56 +120,57 @@ class Resolver(object):
         #Volgens de RFC kan dit beter voor van specifieke servers langzaam naar de root servers te gaan
         stack = [ROOT_SERVER, query for ROOT_SERVER in Consts.ROOT_SERVERS]
 
-		#3. Send them queries until one returns a response.
-		while stack is not []:
-			server, query = stack.pop()
-			s.sendto(query.to_bytes(), (server, 53))
-			try:
-				data = s.recv(2048)
-				response = Message.from_bytes(data)
-			except:
-				continue
+        #3. Send them queries until one returns a response.
+        while stack is not []:
+            server, query = stack.pop()
+            s.sendto(query.to_bytes(), (server, 53))
+            try:
+                data = s.recv(2048)
+                response = Message.from_bytes(data)
+            except:
+                continue
 
-			if response.header.ident != identifier:
-				continue
+            if response.header.ident != identifier:
+                continue
 
-			if response.
+            #if response.
 
-		#4. Analyze the response, either:
-			aliases = []
-	        for additional in response.additionals:
-	            if additional.type_ == Type.CNAME:
-	                aliases.append(additional.rdata.data)
-	                self.cache.add_record(additional)
+        #4. Analyze the response, either:
+        aliases = []
+        for additional in response.additionals:
+            if additional.type_ == Type.CNAME:
+                aliases.append(additional.rdata.data)
+                self.cache.add_record(additional)
 
-	        addresses = []
-	        for answer in response.answers:
-	            if answer.type_ == Type.A:
-	                addresses.append(answer.rdata.data)
-	                self.cache.add_record(answer)
+        addresses = []
+        for answer in response.answers:
+            if answer.type_ == Type.A:
+                addresses.append(answer.rdata.data)
+                self.cache.add_record(answer)
 
-	        if addresses is not []:
-	        	return hostname, aliases, addresses
+        if addresses is not []:
+            return hostname, aliases, addresses
 
-	        for authority in response.authorities:
-	        	if authority.Type == Type.NS:
-	        		if self.caching:
-	        			self.cache.add_record(authority)
-	        		stack.push((authority, query))
+        for authority in response.authorities:
+            if authority.Type == Type.NS:
+                if self.caching:
+                    self.cache.add_record(authority)
+                stack.push((authority, query))
 
-	        #a. if the response answers the question or contains a name
-	        #   error, cache the data as well as returning it back to
-	        #   the client.
+        #a. if the response answers the question or contains a name
+        #   error, cache the data as well as returning it back to
+        #   the client.
 
-	        #b. if the response contains a better delegation to other
-	        #   servers, cache the delegation information, and go to
-	        #   step 2.
+        #b. if the response contains a better delegation to other
+        #   servers, cache the delegation information, and go to
+        #   step 2.
 
-	        #c. if the response shows a CNAME and that is not the
-	        #   answer itself, cache the CNAME, change the SNAME to the
-	        #   canonical name in the CNAME RR and go to step 1.
+        #c. if the response shows a CNAME and that is not the
+        #   answer itself, cache the CNAME, change the SNAME to the
+        #   canonical name in the CNAME RR and go to step 1.
 
-	        #d. if the response shows a servers failure or other
-	        #   bizarre contents, delete the server from the SLIST and
-	        #   go back to step 3.
-	    return hostname, [], []
+        #d. if the response shows a servers failure or other
+        #   bizarre contents, delete the server from the SLIST and
+        #   go back to step 3.
+        return hostname, [], []
+        '''
