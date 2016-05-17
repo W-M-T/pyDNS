@@ -6,6 +6,7 @@ This script contains the code for starting a DNS server.
 """
 
 import dns.server
+import time
 
 if __name__ == "__main__":
     # Parse arguments
@@ -23,6 +24,9 @@ if __name__ == "__main__":
     server = dns.server.Server(args.port, args.caching, args.ttl)
     try:
         server.serve()
+        print("[*] - Server ended.")
     except KeyboardInterrupt:
+        print("\n[*] - Trying to shut down.")
         server.shutdown()
-        print()
+        print("[*] - Shutting down.\n")
+        time.sleep(1)

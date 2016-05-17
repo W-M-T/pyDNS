@@ -8,19 +8,22 @@ server using the algorithm described in section 4.3.2 of RFC 1034.
 
 import socket
 from threading import Thread
-
+import platform
+import dns.message
+import dns.resolver
 
 class RequestHandler(Thread):
     """ A handler for requests to the DNS server """
 
-    def __init__(self, serversocket, clientIP, message):
+    def __init__(self, serversocket, clientIP, packet, resolver):
         """ Initialize the handler thread """
         super().__init__()
         self.daemon = True
         self.serversocket = serversocket
         self.clientIP = clientIP
-        self.message = message
-
+        self.msg = dns.message.from_bytes(packet)
+        self.resolver = resolver
+        
     def handle_request(self):#parse message en stuur reply
         pass
         
@@ -34,7 +37,6 @@ class RequestHandler(Thread):
 
 class Server(object):
     """ A recursive DNS server """
-    done = False
 
     def __init__(self, port, caching, ttl):
         """ Initialize the server
@@ -47,6 +49,15 @@ class Server(object):
         self.caching = caching
         self.ttl = ttl
         self.port = port
+        self.done = False
+        self.resolver = dns.resolver.Resolver(self.caching, self.ttl)
+        self.connlist = []
+
+    def accept_request(self, s):
+        packet, clientIP = s.recvfrom(2048)#2048 ok? of groter ook nodig?
+        rh = RequestHandler(s, clientIP, packet, self.resolver)
+        self.connlist.append(rh)
+        rh.run()
 
     def serve(self):
         """ Start serving request """
@@ -56,15 +67,21 @@ class Server(object):
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         
         s.bind(('', self.port))
-        
-        while not self.done:
-            # TODO: receive request and open handler
-            message, clientIP = s.recvfrom(2048)#2048 ok? of groter ook nodig?
-            rh = RequestHandler(s, clientIP, message)
-            rh.run()
-            
+
+        #Zorgt ervoor dat Windows ook reageert op keyboard interrupts.
+        if platform.system() == 'Windows':
+            s.settimeout(1)#Deze timeout langer maken als het invloed heeft op het gedrag van de server
+            while not self.done:
+                try:
+                    self.accept_request(s)
+                except (socket.timeout):
+                    pass
+        else:
+            while not self.done:
+                self.accept_request(s)
 
     def shutdown(self):
         """ Shutdown the server """
+        print("MAY YE FIND MANY SHUCKLES")
         self.done = True
         # TODO: shutdown socket
