@@ -11,7 +11,7 @@ if __name__ == "__main__":
     # Parse arguments
     import argparse
     parser = argparse.ArgumentParser(description="DNS Client")
-    parser.add_argument("hostname", help="hostname to resolve")
+    parser.add_argument("hostname", help="hostname to resolve", nargs='?', type=str, default="www.nu.nl")
     parser.add_argument("-c", "--caching", action="store_true",
             help="Enable caching")
     parser.add_argument("-t", "--ttl", metavar="time", type=int, default=0, 
@@ -21,7 +21,8 @@ if __name__ == "__main__":
     # Resolve hostname
     #Wat is hier nou weer aan de hand? Hij geeft een ander aantal argumenten dan er in resolver.py wordt verwacht.
     #TODO: fix dit
-    resolver = dns.resolver.Resolver(["localhost"], 15, args.caching, args.ttl)
+    #resolver = dns.resolver.Resolver(["localhost"], 15, args.caching, args.ttl)
+    resolver = dns.resolver.Resolver(args.caching, args.ttl)#Even tijdelijk met minder argumenten
     hostname, aliases, addresses = resolver.gethostbyname(args.hostname)
     
     # Print output

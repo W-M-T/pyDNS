@@ -47,7 +47,7 @@ class Server(object):
             ttl (int): ttl for records (if > 0) of cache
         """
         self.caching = caching
-        self.ttl = ttl
+        self.ttl = ttl if ttl > 0 else 0
         self.port = port
         self.done = False
         self.resolver = dns.resolver.Resolver(self.caching, self.ttl)

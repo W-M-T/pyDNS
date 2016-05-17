@@ -27,7 +27,7 @@ class Resolver(object):
             ttl (int): ttl of cache entries (if > 0)
         """
         self.caching = caching
-        self.ttl = ttl
+        self.ttl = ttl if ttl > 0 else 0 #Deze check is niet nodig voor de resolver gemaakt via de server, maar wel voor de resolver gemaakt door de client
         self.identifier = random.randint(0, 65535)
         if self.caching:
             self.cache = RecordCache.read_cache_file()
@@ -172,5 +172,5 @@ class Resolver(object):
         #d. if the response shows a servers failure or other
         #   bizarre contents, delete the server from the SLIST and
         #   go back to step 3.
-        return hostname, [], []
         '''
+        return hostname, [], []
