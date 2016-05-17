@@ -8,6 +8,7 @@ DNS server, but with a different list of servers.
 """
 
 import socket
+import random
 
 from dns.cache import RecordCache
 from dns.classes import Class
@@ -27,6 +28,11 @@ class Resolver(object):
         """
         self.caching = caching
         self.ttl = ttl
+        self.identifier = random.randint(0, 65535)
+        if self.caching:
+			self.cache = RecordCache.read_cache_file()
+
+
 
     def gethostbyname(self, hostname):
         """ Translate a host name to IPv4 address.
@@ -46,7 +52,7 @@ class Resolver(object):
 
         # Create and send query
         question = dns.message.Question(hostname, Type.A, Class.IN)
-        header = dns.message.Header(9001, 0, 1, 0, 0, 0)
+        header = dns.message.Header(, 0, 1, 0, 0, 0)
         header.qr = 0
         header.opcode = 0
         header.rd = 1
@@ -68,3 +74,80 @@ class Resolver(object):
                 addresses.append(answer.rdata.data)
 
         return hostname, aliases, addresses
+
+	def save_cache():
+		if self.caching:
+			if self.cache is not None:
+				self.cache.write_cache_file()
+
+    def gethostbyname(self, hostname):
+   		aliaslist = []
+   		ipaddrlist = []
+
+   		#0. Check if hostname is a valid FQDN.
+   		valid = is_valid_hostname(hostname)
+   		if valid:
+   			if hostname not in[valid[0], valid[0] + "."]:
+   				return hostname, [], []
+
+   		#1. See if the answer is in local information, and if so return it to the client.
+   		#TODO: check of we authorative zijn. Zo ja, geef dat ipv resultaat uit cache
+   		if self.caching:   		
+   			if self.cache is None:
+   				self.cache = RecordCache.read_cache_file()	
+
+   			for alias in self.cache.lookup(hostname, Type.CNAME, Class.IN):
+   				aliaslist.append(alias)
+   			
+   			for address in self.cache.lookup(hostname, Type.A, Class.IN):
+   				ipaddrlist.append(address)
+
+   		if ipaddrlist is not []:
+   			return hostname, aliaslist, ipaddrlist
+
+		#2. Find the best servers to ask.
+		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(self.timeout)
+
+        identifier = (self.identifier + random.randint(1,2048)) % 25535
+        question = dns.message.Question(hostname, Type.A, Class.IN)
+        header = dns.message.Header(identifier, 0, 1, 0, 0, 0)
+        header.qr = 0
+        header.opcode = 0
+        header.rd = 1
+        query = dns.message.Message(header, [question])
+
+        #Volgens de RFC kan dit beter voor van specifieke servers langzaam naar de root servers te gaan
+        servers = Consts.ROOT_SERVERS
+
+		#3. Send them queries until one returns a response.
+		while servers is not []:
+			server = servers[-1]
+			s.sendto(query.to_bytes(), (server, 53))
+			try:
+				data = s.recv(2048)
+				response = Message.from_bytes(data)
+			except:
+				continue
+
+			if response.header.ident != identifier:
+				continue
+
+
+		#4. Analyze the response, either:
+
+	        #a. if the response answers the question or contains a name
+	        #   error, cache the data as well as returning it back to
+	        #   the client.
+
+	        #b. if the response contains a better delegation to other
+	        #   servers, cache the delegation information, and go to
+	        #   step 2.
+
+	        #c. if the response shows a CNAME and that is not the
+	        #   answer itself, cache the CNAME, change the SNAME to the
+	        #   canonical name in the CNAME RR and go to step 1.
+
+	        #d. if the response shows a servers failure or other
+	        #   bizarre contents, delete the server from the SLIST and
+	        #   go back to step 3.
