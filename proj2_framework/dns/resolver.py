@@ -52,7 +52,7 @@ class Resolver(object):
 
         # Create and send query
         question = dns.message.Question(hostname, Type.A, Class.IN)
-        header = dns.message.Header(, 0, 1, 0, 0, 0)
+        header = dns.message.Header(identifier, 0, 1, 0, 0, 0)
         header.qr = 0
         header.opcode = 0
         header.rd = 1
@@ -118,11 +118,11 @@ class Resolver(object):
         query = dns.message.Message(header, [question])
 
         #Volgens de RFC kan dit beter voor van specifieke servers langzaam naar de root servers te gaan
-        servers = Consts.ROOT_SERVERS
+        stack = [ROOT_SERVER, query for ROOT_SERVER in Consts.ROOT_SERVERS]
 
 		#3. Send them queries until one returns a response.
-		while servers is not []:
-			server = servers[-1]
+		while stack is not []:
+			server, query = stack.pop()
 			s.sendto(query.to_bytes(), (server, 53))
 			try:
 				data = s.recv(2048)
@@ -133,8 +133,29 @@ class Resolver(object):
 			if response.header.ident != identifier:
 				continue
 
+			if response.
 
 		#4. Analyze the response, either:
+			aliases = []
+	        for additional in response.additionals:
+	            if additional.type_ == Type.CNAME:
+	                aliases.append(additional.rdata.data)
+	                self.cache.add_record(additional)
+
+	        addresses = []
+	        for answer in response.answers:
+	            if answer.type_ == Type.A:
+	                addresses.append(answer.rdata.data)
+	                self.cache.add_record(answer)
+
+	        if addresses is not []:
+	        	return hostname, aliases, addresses
+
+	        for authority in response.authorities:
+	        	if authority.Type == Type.NS:
+	        		if self.caching:
+	        			self.cache.add_record(authority)
+	        		stack.push((authority, query))
 
 	        #a. if the response answers the question or contains a name
 	        #   error, cache the data as well as returning it back to
@@ -151,3 +172,4 @@ class Resolver(object):
 	        #d. if the response shows a servers failure or other
 	        #   bizarre contents, delete the server from the SLIST and
 	        #   go back to step 3.
+	    return hostname, [], []
