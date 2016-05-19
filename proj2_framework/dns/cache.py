@@ -94,6 +94,8 @@ class RecordCache(object):
             type_ (Type): type
             class_ (Class): class
         """
+        if (int(time.time()) - lastCleanup >= 3600)#Cache al een uur lang niet gecleaned
+            cleanup()
         
         matchindexes = [i for i, e in self.records if e[1].dname == dname and e[1].type_ == type_ and e[1].class_ == class_]
         for i in matchindexes:
