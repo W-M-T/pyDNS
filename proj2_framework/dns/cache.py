@@ -64,48 +64,21 @@ class RecordCache(object):
 
         #Lees de cache in, update de ttls, gooi alle invalid data weg
         self.read_cache_file()
-        self.fixDelta()
-
-    def fixDelta(self):
-        #Gebruik de het verschil tussen de huidige tijd en de timestamp van de net ingeladen cache om de ttl van alle records te updaten
-        try:
-            with open(Consts.CACHE_TIMESTAMP) as infile:
-                oldtime = infile.read()
-                nowtime = int(time.time())
-                delta = nowtime - oldtime
-
-                #update ttls
-                self.lock.acquire()
-                for entry in self.records:
-                    entry.ttl = entry.ttl - delta
-                self.lock.release()
-
-                #gooi de entries weg met ttl <=0
-                self.lock.acquire()
-                records = [entry for entry in self.records if entry.ttl > 0]
-                self.lock.acquire()
-
-                self.lastCleanup = int(time.time())
-                
-        except (ValueError, IOError), e:
-            print("An error has occured while updating the ttl's with the delta " + str(e))
-            self.lastCleanup = int(time.time())
     
     def cleanup(self):
         #Itereer over alle records, update hun ttls en gooi alle records weg waar deze <=0 wordt.
-
-        nowtime = int(time.time())
-        delta = nowtime - self.lastCleanup
         
-        #update ttls
+        #update ttls en timestamps
         self.lock.acquire()
-        for entry in self.records:
-            entry.ttl = entry.ttl - delta
+        for (timestamp, entry) in self.records:#DIT MOET NOG GEFIXT WORDEN-------------------------------------------------
+            now = int(time.time())
+            entry.ttl = entry.ttl - (now - timestamp)
+            timestamp = now
         self.lock.release()
 
         #gooi de entries weg met ttl <=0
         self.lock.acquire()
-        records = [entry for entry in self.records if entry.ttl > 0]
+        records = [(timestamp, entry) for (timestamp, entry) in self.records if entry.ttl > 0]
         self.lock.acquire()
 
         self.lastCleanup = int(time.time())
@@ -122,8 +95,15 @@ class RecordCache(object):
             class_ (Class): class
         """
         
-        delta = int(time.time())
-        return [entry for entry in self.records if entry.dname == dname and entry.type_ == type_ and entry.class_ == class_ and entry.ttl - delta > 0]
+        now = int(time.time())
+        matchindexes = [i for i, e in self.records if e[1].dname == dname and e[1].type_ == type_ and e[1].class_ == class_]
+        for i in matchindexes:#DIT MOET NOG GEFIXT WORDEN-------------------------------------------------
+            temp = self.records[i]
+            temp[0] = int(time.time())
+            temp[1].ttl = record.ttl
+            self.records[i] = temp
+        
+        return [i for i, e in self.records if entry.dname == dname and entry.type_ == type_ and entry.class_ == class_ and entry.ttl - (now - timestamp) > 0]
         
     def add_record(self, record):
         """ Add a new Record to the cache
@@ -131,15 +111,18 @@ class RecordCache(object):
         Args:
             record (ResourceRecord): the record added to the cache
         """
-        #Only append if not already in cache
-        #TODO: iets met TTL?
-        #Zet de ttl niet op de gekregen waarde, maar op de gekregen waarde + de offset van de laatste cleanup
-        #Anders wordt het te vroeg gecleaned
 
-        #Wat als het al voorkomt? ttl updaten?
         self.lock.acquire()
-        if not self.lookup(record.name, record.type_, record.class_):
-            self.records.append(record)
+        found = self.lookup(record.name, record.type_, record.class_)
+        if not found:
+            self.records.append((int(time.time()), record))
+        else:#Als het al in de cache zit, update dan alleen de ttls
+            for i, e in enumerate(self.records):#We itereren over de enumeratie zodat we elementen kunnen manipuleren
+                if e[1].dname == dname and e[1].type_ == type_ and e[1].class_ == class_:
+                    temp = e
+                    temp[0] = int(time.time())
+                    temp[1].ttl = record.ttl #Gebruik de nieuwe ttl DIT MOET NOG GEFIXT WORDEN-------------------------------------------------
+                    self.records[i] = temp
         self.lock.release()
     
     def read_cache_file(self):
@@ -149,9 +132,24 @@ class RecordCache(object):
 
         #Load from file
         try:
-            with open(Consts.CACHE_FILE) as infile:    
-                data = infile.read()
-                self.records = json.loads(data, object_hook=resource_from_json)
+            with open(Consts.CACHE_FILE) as infile:
+                with open(Consts.CACHE_TIMESTAMP) as stampfile:
+                    data = infile.read()
+                    last_timestamp = stampfile.read()
+                    timestamp = int(time.time())
+                    
+                    recordlist = json.loads(data, object_hook=resource_from_json)
+
+                    #update de ttls
+                    for entry in recordlist
+                        entry.ttl = entry.ttl - (timestamp - last_timestamp)
+
+                    #gooi alle expired entries weg
+                    recordlist = [entry for entry in recordlist if entry.ttl > 0]
+
+                    #sla de entries op met een timestamp die aangeeft vanaf welk absoluut punt de ttl telde
+                    self.records = [(timestamp, entry) for entry in recordlist]
+
         except (ValueError, IOError), e:
             print("An error has occured while loading cache from disk: " + str(e))
             self.records = []
@@ -167,6 +165,6 @@ class RecordCache(object):
                 outfile.write(string = json.dumps(records, cls=ResourceEncoder, indent=4))
             encoder = json.JSONEncoder()
             with open(Consts.CACHE_TIMESTAMP, 'w') as outfile:
-                outfile.write(self.lastCleanup)
+                outfile.write(int(time.time()))
         except IOError, e:
             print("An error has occured while writing cache to disk: " + str(e))
