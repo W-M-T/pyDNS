@@ -32,7 +32,15 @@ class Resolver(object):
         if self.caching:
             self.cache = RecordCache.read_cache_file()
 
-
+    def handle_query(self, query):
+        if len(query.questions) == 1:
+            #Verwerk de vraag juist
+            pass
+        else
+            #Stuur geen reactie, of zoek uit watvoor error je voor een niet-ondersteunde functie terug moet geven.
+            #Vraag even rond of deze feature wel/niet ondersteund moet worden. Na wat googelen lijkt het ongewoon te zijn om het te supporten, maar het staat wel in de rfc.
+            pass
+        
 
     def gethostbyname(self, hostname):
         """ Translate a host name to IPv4 address.

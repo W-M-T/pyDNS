@@ -52,6 +52,12 @@ class Server(object):
         self.done = False
         self.resolver = dns.resolver.Resolver(self.caching, self.ttl)
         self.connlist = []
+        
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+        self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        
+        self.s.bind(('', self.port))
 
     def accept_request(self, s):
         packet, clientIP = s.recvfrom(2048)#2048 ok? of groter ook nodig?
@@ -62,15 +68,10 @@ class Server(object):
     def serve(self):
         """ Start serving request """
         print("[+] - DNS Server up and running.")
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         
-        s.bind(('', self.port))
-
         #Zorgt ervoor dat Windows ook reageert op keyboard interrupts.
         if platform.system() == 'Windows':
-            s.settimeout(1)#Deze timeout langer maken als het invloed heeft op het gedrag van de server
+            self.s.settimeout(1)#Deze timeout langer maken als het invloed heeft op het gedrag van de server
             while not self.done:
                 try:
                     self.accept_request(s)
@@ -79,9 +80,10 @@ class Server(object):
         else:
             while not self.done:
                 self.accept_request(s)
+        print("escaped!")
 
     def shutdown(self):
         """ Shutdown the server """
         print("MAY YE FIND MANY SHUCKLES")
         self.done = True
-        # TODO: shutdown socket
+        self.s.shutdown(socket.SHUT_RDWR)

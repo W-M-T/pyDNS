@@ -159,6 +159,7 @@ class Header(object):
             raise ValueError("value too big for flags")
         self._flags = value
 
+    #Is dit een query? Dan 0. Is dit een response? Dan 1.
     @property
     def qr(self):
         return self._flags & (1 << 15)

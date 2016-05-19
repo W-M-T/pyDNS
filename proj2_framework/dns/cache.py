@@ -14,6 +14,8 @@ from dns.resource import ResourceRecord, RecordData
 from dns.types import Type
 from dns.classes import Class
 import dns.consts as Consts
+import threading
+import time
 
 class ResourceEncoder(json.JSONEncoder):
     """ Conver ResourceRecord to JSON
@@ -58,7 +60,56 @@ class RecordCache(object):
         """
         self.records = []
         self.ttl = ttl
+        self.lock = threading.Lock()
 
+        #Lees de cache in, update de ttls, gooi alle invalid data weg
+        self.read_cache_file()
+        self.fixDelta()
+
+    def fixDelta(self):
+        #Gebruik de het verschil tussen de huidige tijd en de timestamp van de net ingeladen cache om de ttl van alle records te updaten
+        try:
+            with open(Consts.CACHE_TIMESTAMP) as infile:
+                oldtime = infile.read()
+                nowtime = int(time.time())
+                delta = nowtime - oldtime
+
+                #update ttls
+                self.lock.acquire()
+                for entry in self.records:
+                    entry.ttl = entry.ttl - delta
+                self.lock.release()
+
+                #gooi de entries weg met ttl <=0
+                self.lock.acquire()
+                records = [entry for entry in records if entry.ttl > 0]
+                self.lock.acquire()
+
+                self.lastCleanup = int(time.time())
+                
+                
+        except (ValueError, IOError), e:
+            print("An error has occured while updating the ttl's with the delta " + str(e))
+    
+    def cleanup(self):
+        #Itereer over alle records, update hun ttls en gooi alle records weg waar deze <=0 wordt.
+
+        nowtime = int(time.time())
+        delta = nowtime - self.lastCleanup
+        
+        #update ttls
+        self.lock.acquire()
+        for entry in self.records:
+            entry.ttl = entry.ttl - delta
+        self.lock.release()
+
+        #gooi de entries weg met ttl <=0
+        self.lock.acquire()
+        records = [entry for entry in records if entry.ttl > 0]
+        self.lock.acquire()
+
+        self.lastCleanup = int(time.time())
+    
     def lookup(self, dname, type_, class_):
         """ Lookup resource records in cache
 
@@ -88,8 +139,14 @@ class RecordCache(object):
         """
         #Only append if not already in cache
         #TODO: iets met TTL?
-        if self.lookup(record.name, record.type_, record.class_) == []:
+        #Zet de ttl niet op de gekregen waarde, maar op de gekregen waarde + de offset van de laatste cleanup
+        #Anders wordt het te vroeg gecleaned
+
+        #Wat als het al voorkomt? ttl updaten?
+        self.lock.acquire()
+        if not self.lookup(record.name, record.type_, record.class_):
             self.records.append(record)
+        self.lock.release()
     
     def read_cache_file(self):
         """ Read the cache file from disk """
@@ -109,8 +166,13 @@ class RecordCache(object):
 
     def write_cache_file(self):
         """ Write the cache file to disk """
+        cleanup()
+        
         try:
             with open(Consts.CACHE_FILE, 'w') as outfile:
                 outfile.write(string = json.dumps(records, cls=ResourceEncoder, indent=4))
+            encoder = json.JSONEncoder()
+            with open(Consts.CACHE_TIMESTAMP, 'w') as outfile:
+                outfile.write(self.lastCleanup)
         except IOError, e:
             print("An error has occured while writing cache to disk: " + str(e))
