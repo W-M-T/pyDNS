@@ -79,7 +79,7 @@ class RecordCache(object):
         #gooi de entries weg met ttl <=0
         self.lock.acquire()
         self.records = [(timestamp, entry) for (timestamp, entry) in self.records if entry.ttl > 0]
-        self.lock.acquire()
+        self.lock.release()
 
         self.lastCleanup = int(time.time())
     
@@ -95,7 +95,7 @@ class RecordCache(object):
             class_ (Class): class
         """
         if (int(time.time()) - lastCleanup >= 3600)#Cache al een uur lang niet gecleaned
-            cleanup()
+            self.cleanup()
         
         matchindexes = [i for i, e in self.records if e[1].dname == dname and e[1].type_ == type_ and e[1].class_ == class_]
         for i in matchindexes:
@@ -162,7 +162,7 @@ class RecordCache(object):
 
     def write_cache_file(self):
         """ Write the cache file to disk """
-        cleanup()
+        self.cleanup()
         
         try:
             with open(Consts.CACHE_FILE, 'w') as outfile:
