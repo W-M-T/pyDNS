@@ -10,11 +10,11 @@ DNS server, but with a different list of servers.
 import socket
 import random
 
-from dns.cache import RecordCache
 from dns.classes import Class
-from dns.message import Message, Header, Question
-from dns.rcodes import RCode
 from dns.types import Type
+import dns.cache
+import dns.message
+import dns.rcodes
 
 class Resolver(object):
     """ DNS resolver """
@@ -55,6 +55,7 @@ class Resolver(object):
         Returns:
             (str, [str], [str]): (hostname, aliaslist, ipaddrlist)
         """
+        timeout = 2 # the time waited for a response
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(timeout)
 

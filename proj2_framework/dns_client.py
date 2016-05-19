@@ -19,10 +19,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     # Resolve hostname
-    #Wat is hier nou weer aan de hand? Hij geeft een ander aantal argumenten dan er in resolver.py wordt verwacht.
-    #TODO: fix dit
-    #resolver = dns.resolver.Resolver(["localhost"], 15, args.caching, args.ttl)
-    resolver = dns.resolver.Resolver(args.caching, args.ttl)#Even tijdelijk met minder argumenten
+    resolver = dns.resolver.Resolver(args.caching, args.ttl)
     hostname, aliases, addresses = resolver.gethostbyname(args.hostname)
     
     # Print output

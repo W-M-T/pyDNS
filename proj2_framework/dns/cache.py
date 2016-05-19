@@ -82,14 +82,14 @@ class RecordCache(object):
 
                 #gooi de entries weg met ttl <=0
                 self.lock.acquire()
-                records = [entry for entry in records if entry.ttl > 0]
+                records = [entry for entry in self.records if entry.ttl > 0]
                 self.lock.acquire()
 
                 self.lastCleanup = int(time.time())
                 
-                
         except (ValueError, IOError), e:
             print("An error has occured while updating the ttl's with the delta " + str(e))
+            self.lastCleanup = int(time.time())
     
     def cleanup(self):
         #Itereer over alle records, update hun ttls en gooi alle records weg waar deze <=0 wordt.
@@ -105,7 +105,7 @@ class RecordCache(object):
 
         #gooi de entries weg met ttl <=0
         self.lock.acquire()
-        records = [entry for entry in records if entry.ttl > 0]
+        records = [entry for entry in self.records if entry.ttl > 0]
         self.lock.acquire()
 
         self.lastCleanup = int(time.time())
@@ -121,16 +121,10 @@ class RecordCache(object):
             type_ (Type): type
             class_ (Class): class
         """
-        results = []
-        #Hier doen dat als hij een hit heeft maar de TTL verlopen is
-        #dat hij dan onthoudt dat hij hem eruit moet gooien als hij
-        #klaar is met itereren? We kunnen ook doen dat iets (anders)
-        #actief de TTLs zit te bekijken en oude er uit gooit.
-        for entry in self.records:
-            if entry.dname == dname and entry.type_ == type_ and entry.class_ == class_:
-                results.append(entry)
-        return results
-    
+        
+        delta = int(time.time())
+        return [entry for entry in self.records if entry.dname == dname and entry.type_ == type_ and entry.class_ == class_ and entry.ttl - delta > 0]
+        
     def add_record(self, record):
         """ Add a new Record to the cache
         
