@@ -70,15 +70,15 @@ class RecordCache(object):
         
         #update ttls en timestamps
         self.lock.acquire()
-        for (timestamp, entry) in self.records:#DIT MOET NOG GEFIXT WORDEN-------------------------------------------------
+        for i,e in enumerate(self.records):
             now = int(time.time())
-            entry.ttl = entry.ttl - (now - timestamp)
-            timestamp = now
+            e[1].ttl = e[1].ttl - (now - e[0])#entry kan direct worden aangepast, omdat het een object is. timestamp echter niet, omdat het een int is
+            self.records[i][0] = now #update de timestamp
         self.lock.release()
 
         #gooi de entries weg met ttl <=0
         self.lock.acquire()
-        records = [(timestamp, entry) for (timestamp, entry) in self.records if entry.ttl > 0]
+        self.records = [(timestamp, entry) for (timestamp, entry) in self.records if entry.ttl > 0]
         self.lock.acquire()
 
         self.lastCleanup = int(time.time())
@@ -95,15 +95,15 @@ class RecordCache(object):
             class_ (Class): class
         """
         
-        now = int(time.time())
         matchindexes = [i for i, e in self.records if e[1].dname == dname and e[1].type_ == type_ and e[1].class_ == class_]
-        for i in matchindexes:#DIT MOET NOG GEFIXT WORDEN-------------------------------------------------
+        for i in matchindexes:
+            now = int(time.time())
             temp = self.records[i]
-            temp[0] = int(time.time())
-            temp[1].ttl = record.ttl
+            temp[1].ttl = temp[1].ttl - (now - temp[0])
+            temp[0] = now
             self.records[i] = temp
         
-        return [i for i, e in self.records if entry.dname == dname and entry.type_ == type_ and entry.class_ == class_ and entry.ttl - (now - timestamp) > 0]
+        return [i for i, e in self.records if entry.dname == dname and entry.type_ == type_ and entry.class_ == class_ and entry.ttl - (int(time.time()) - timestamp) > 0]
         
     def add_record(self, record):
         """ Add a new Record to the cache
@@ -119,9 +119,11 @@ class RecordCache(object):
         else:#Als het al in de cache zit, update dan alleen de ttls
             for i, e in enumerate(self.records):#We itereren over de enumeratie zodat we elementen kunnen manipuleren
                 if e[1].dname == dname and e[1].type_ == type_ and e[1].class_ == class_:
+                    now = time.time()
+                    if (now + record.ttl > e[0] + e[1].ttl) #Als de nieuwe record hetzelfde is maar een hogere ttl heeft update de ttl
                     temp = e
-                    temp[0] = int(time.time())
-                    temp[1].ttl = record.ttl #Gebruik de nieuwe ttl DIT MOET NOG GEFIXT WORDEN-------------------------------------------------
+                    temp[0] = now
+                    temp[1].ttl = record.ttl
                     self.records[i] = temp
         self.lock.release()
     
@@ -162,7 +164,7 @@ class RecordCache(object):
         
         try:
             with open(Consts.CACHE_FILE, 'w') as outfile:
-                outfile.write(string = json.dumps(records, cls=ResourceEncoder, indent=4))
+                outfile.write(string = json.dumps([entry for (stamp, entry) in self.records], cls=ResourceEncoder, indent=4))
             encoder = json.JSONEncoder()
             with open(Consts.CACHE_TIMESTAMP, 'w') as outfile:
                 outfile.write(int(time.time()))
