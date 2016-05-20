@@ -72,11 +72,18 @@ class Zone(object):
             return 86400 * int(timestring[:-1])
         if (timestring[-1] in ['d', 'D']):
             return 604800 * int(timestring[:-1])
-        return 0
+        try:
+            if timestring == int(timestring):
+                return int(timestring)
+            else:
+                return 0
+        except:
+            return 0
 
     def time_to_seconds(self, timestring):
         return sum(map(time_to_seconds_helper, re.findall(re.compile("\d+\w"), timestring)))
 
+    #TODO: Laten werken met SOA regels en met regels die niet beginnen met een naam maar met IN
     def parse_and_load(self, content):
         content = re.sub(re.compile(";.*?\n"), "\n", content) #Remove comments
         content = re.sub(re.compile("\n\n*\n") , "\n", content) #Remove whitespaces
@@ -87,14 +94,35 @@ class Zone(object):
         content = re.compile(r'\(.*?\)', re.DOTALL)\
         .sub(lambda x: x.group().replace('\n', ''), content) #Remove newlines between ()
 
-        ttl = None
+        default_ttl = None
         origin = None
 
-        for line in content:
-            if line[:4] == "$TTL":
-                ttl = time_to_seconds(strip(line[4:]))
-            elif line[:7] == "$ORIGIN":
-                origin = strip(line[7:])
-            elif "IN SOA" in line:
-                pass
+        recordSet = []
 
+        for line in content.split('\n'):
+            if line[:4] == "$TTL":
+                print(line[4:].strip())
+                prev_ttl = time_to_seconds(line[4:].strip())
+            elif line[:7] == "$ORIGIN":
+                origin = line[7:].strip()
+            else:
+                parts = line.split(' ')
+
+                rr_name = parts[0]
+                #Dit kan ook mooier
+                if time_to_seconds(parts[1]) != 0:
+                    #TTL is specified
+                    rr_ttl = time_to_seconds(parts[1])
+                    rr_class = Class.from_string(parts[2])
+                    rr_type = parts[3]
+                    rr_data = RecordData.create(rr_type, parts[4].stripr('.'))
+                    recordSet.append(ResourceRecord(rr_name, rr_type, rr_class, rr_ttl, rr_data))
+
+                else:
+                    #TTL is not specified
+                    rr_ttl = prev_ttl
+                    rr_class = Class.from_string(parts[1])
+                    rr_type = parts[2]
+                    rr_data = RecordData.create(rr_type, parts[3].stripr('.'))
+                    recordSet.append(ResourceRecord(rr_name, rr_type, rr_class, rr_ttl, rr_data))         
+        self.add_node(recordSet)
