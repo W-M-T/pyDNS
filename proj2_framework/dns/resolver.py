@@ -111,7 +111,9 @@ class Resolver(object):
         query = dns.message.Message(header, [question])
         
         while hints != []:
-            responses = self.send_query(query, hints)
+            responses = self.send_query(query, [hints[0]])
+            #responses = self.send_query(query, hints)
+            #Zoek een compromis tussen de twee regels hierboven
             hints = []
 
             if responses is None:
@@ -121,23 +123,23 @@ class Resolver(object):
             #4. Analyze the response
             for response in responses:
                 for answer in response.answers:
-                    if answer.type == Type.A and (answer.name == hostname or answer.name in aliaslist):  
-                        ipaddrlist.append(answers.rdata.data)
-                    if answer.type == Type.CNAME and (answer.name == hostname or answer.name in aliaslist):
+                    if answer.type_ == Type.A and (answer.name == hostname or answer.name in aliaslist):  
+                        ipaddrlist.append(answer.rdata.data)
+                    if answer.type_ == Type.CNAME and (answer.name == hostname or answer.name in aliaslist):
                         if answer.rdata.data not in aliases:
                             aliaslist.append(answer.rdata.data)
 
                 for additional in response.additionals:
-                    if additional.type == Type.CNAME and (additional.name == hostname or additional.name in aliaslist):
+                    if additional.type_ == Type.CNAME and (additional.name == hostname or additional.name in aliaslist):
                         if additional.rdata.data not in aliaslist:
                             aliaslist.append(additional.rdata.data)
 
-                if addresses != []:
-                    return hostname, aliases, addresses
+                if ipaddrlist != []:
+                    return hostname, aliaslist, ipaddrlist
 
                 for authority in response.authorities:
-                    if authority.Type == Type.NS:
-                        hints = [authority] + hints
+                    if authority.type_ == Type.NS:
+                        hints = [authority.rdata.data] + hints
 
         return hostname, [], []
         #, either:
