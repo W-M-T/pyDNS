@@ -136,14 +136,14 @@ class RecordCache(object):
                     self.records[i] = temp
         self.lock.release()
     
-    def read_cache_file(self):
+    def read_cache_file(self, cache_file=Consts.CACHE_FILE):
         """ Read the cache file from disk """
         #Empty current cache
         self.records = []
 
         #Load from file
         try:
-            with open(Consts.CACHE_FILE) as infile:
+            with open(cache_file) as infile:
                 with open(Consts.CACHE_TIMESTAMP) as stampfile:
                     data = infile.read()
                     last_timestamp = stampfile.read()
