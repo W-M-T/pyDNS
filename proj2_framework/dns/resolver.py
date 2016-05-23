@@ -56,7 +56,6 @@ class Resolver(object):
                 sock.sendto(query.to_bytes(), (server, 53))
                 data = sock.recv(512)
                 response = dns.message.Message.from_bytes(data)
-                
                 if response.header.ident != query.header.ident:
                     continue
 
@@ -67,6 +66,7 @@ class Resolver(object):
                         self.cache.add_record(record)
             except socket.timeout:
                 pass
+        return responses
 
 	def save_cache(self):
             if self.caching:
@@ -119,24 +119,25 @@ class Resolver(object):
                 return hostname, [], []
 
             #4. Analyze the response
-            for answer in responses.answers:
-                if answer.type == Type.A and (answer.name == hostname or answer.name in aliaslist):  
-                    ipaddrlist.append(answers.rdata.data)
-                if answer.type == Type.CNAME and (answer.name == hostname or answer.name in aliaslist):
-                    if answer.rdata.data not in aliases:
-                        aliaslist.append(answer.rdata.data)
+            for response in responses:
+                for answer in response.answers:
+                    if answer.type == Type.A and (answer.name == hostname or answer.name in aliaslist):  
+                        ipaddrlist.append(answers.rdata.data)
+                    if answer.type == Type.CNAME and (answer.name == hostname or answer.name in aliaslist):
+                        if answer.rdata.data not in aliases:
+                            aliaslist.append(answer.rdata.data)
 
-            for additional in responses.additionals:
-                if additional.type == Type.CNAME and (additional.name == hostname or additional.name in aliaslist):
-                    if additional.rdata.data not in aliaslist:
-                        aliaslist.append(additional.rdata.data)
+                for additional in response.additionals:
+                    if additional.type == Type.CNAME and (additional.name == hostname or additional.name in aliaslist):
+                        if additional.rdata.data not in aliaslist:
+                            aliaslist.append(additional.rdata.data)
 
-            if addresses != []:
-                return hostname, aliases, addresses
+                if addresses != []:
+                    return hostname, aliases, addresses
 
-            for authority in response.authorities:
-                if authority.Type == Type.NS:
-                    hints = [authority] + hints
+                for authority in response.authorities:
+                    if authority.Type == Type.NS:
+                        hints = [authority] + hints
 
         return hostname, [], []
         #, either:
