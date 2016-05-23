@@ -6,7 +6,8 @@ portnr = 5353
 server = "localhost"
 
 class TestResolver(unittest.TestCase):
-    pass
+    def setUp(self):
+        self.resolver = dns.resolver.Resolver()
 
 
 class TestResolverCache(unittest.TestCase):
