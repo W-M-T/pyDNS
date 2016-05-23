@@ -1,5 +1,12 @@
 #!/usr/bin/env python2
 
+import argparse
+import unittest
+import sys
+
+import dns.resolver
+
+
 """ Tests for your DNS resolver and server """
 
 portnr = 5353
@@ -7,7 +14,13 @@ server = "localhost"
 
 class TestResolver(unittest.TestCase):
     def setUp(self):
-        self.resolver = dns.resolver.Resolver()
+        self.resolver = dns.resolver.Resolver(5, True, 1000)
+
+    def testFQDN(self):
+        h, al, ad = self.resolver.gethostbyname("gaia.cs.umass.edu")
+        self.assertEqual("gaia.cs.umass.edu", h)
+        self.assertEqual([], al)
+        self.assertEqual(["128.119.245.12"], ad)
 
 
 class TestResolverCache(unittest.TestCase):

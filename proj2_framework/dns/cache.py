@@ -64,6 +64,7 @@ class RecordCache(object):
 
         #Lees de cache in, update de ttls, gooi alle invalid data weg
         self.read_cache_file()
+        self.lastCleanup = time.time()
     
     def cleanup(self):
         #Itereer over alle records, update hun ttls en gooi alle records weg waar deze <=0 wordt.
@@ -94,10 +95,15 @@ class RecordCache(object):
             type_ (Type): type
             class_ (Class): class
         """
-        if (int(time.time()) - lastCleanup >= 3600)#Cache al een uur lang niet gecleaned
+        #LET OP HIER STAAT EEN RETURN
+        return []
+
+        if (int(time.time()) - self.lastCleanup >= 3600): #Cache al een uur lang niet gecleaned
             self.cleanup()
         
-        matchindexes = [i for i, e in self.records if e[1].dname == dname and e[1].type_ == type_ and e[1].class_ == class_]
+        #Geen idee wat hier wordt gedaan maar er zaten fouten in die ik misschien verkeerd heb gefixt.
+        #TODO: fix het opnieuw
+        matchindexes = [i for i, e in self.records if e.name == dname and e.type_ == type_ and e.class_ == class_]
         for i in matchindexes:
             now = int(time.time())
             temp = self.records[i]
@@ -105,7 +111,7 @@ class RecordCache(object):
             temp[0] = now
             self.records[i] = temp
         
-        return [i for i, e in self.records if entry.dname == dname and entry.type_ == type_ and entry.class_ == class_ and entry.ttl - (int(time.time()) - timestamp) > 0]
+        return [i for i, e in self.records if e.name == dname and e.type_ == type_ and e.class_ == class_ and e.ttl - (int(time.time()) - timestamp) > 0]
         
     def add_record(self, record):
         """ Add a new Record to the cache
@@ -122,7 +128,8 @@ class RecordCache(object):
             for i, e in enumerate(self.records):#We itereren over de enumeratie zodat we elementen kunnen manipuleren
                 if e[1].dname == dname and e[1].type_ == type_ and e[1].class_ == class_:
                     now = time.time()
-                    if (now + record.ttl > e[0] + e[1].ttl) #Als de nieuwe record hetzelfde is maar een hogere ttl heeft update de ttl
+                #Misschien moet de volgende if een indentatie dieper
+                if (now + record.ttl > e[0] + e[1].ttl): #Als de nieuwe record hetzelfde is maar een hogere ttl heeft update de ttl
                     temp = e
                     temp[0] = now
                     temp[1].ttl = record.ttl
@@ -145,7 +152,7 @@ class RecordCache(object):
                     recordlist = json.loads(data, object_hook=resource_from_json)
 
                     #update de ttls
-                    for entry in recordlist
+                    for entry in recordlist:
                         entry.ttl = entry.ttl - (timestamp - last_timestamp)
 
                     #gooi alle expired entries weg

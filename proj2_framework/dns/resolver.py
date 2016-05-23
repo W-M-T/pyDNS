@@ -9,17 +9,20 @@ DNS server, but with a different list of servers.
 
 import socket
 import random
+import re
 
 from dns.classes import Class
 from dns.types import Type
+from dns.cache import RecordCache
 import dns.cache
 import dns.message
 import dns.rcodes
+import dns.consts
 
 class Resolver(object):
     """ DNS resolver """
     
-    def __init__(self, timeout, caching, ttl, nameservers):
+    def __init__(self, timeout, caching, ttl, nameservers=[]):
         """ Initialize the resolver
         
         Args:
@@ -28,17 +31,17 @@ class Resolver(object):
         """
         self.timeout = timeout
         self.caching = caching
-        if caching:
-            self.cache = RecordCache.read_cache_file()
         self.ttl = ttl if ttl > 0 else 0 #Deze check is niet nodig voor de resolver gemaakt via de server, maar wel voor de resolver gemaakt door de client
+        if caching:
+            self.cache = RecordCache(self.ttl)
         self.identifier = random.randint(0, 65535)
-        self.nameservers = nameservers + Consts.ROOT_SERVERS
+        self.nameservers = nameservers + dns.consts.ROOT_SERVERS
 
     def handle_query(self, query):
         if len(query.questions) == 1:
             #Verwerk de vraag juist
             pass
-        else
+        else:
             #Stuur geen reactie, of zoek uit watvoor error je voor een niet-ondersteunde functie terug moet geven.
             #Vraag even rond of deze feature wel/niet ondersteund moet worden. Na wat googelen lijkt het ongewoon te zijn om het te supporten, maar het staat wel in de rfc.
             pass
@@ -57,7 +60,7 @@ class Resolver(object):
                 if response.header.ident != query.header.ident:
                     continue
 
-                responses += response
+                responses.append(response)
                 if self.caching:
                     for record in response.additionals + \
                             response.answers + response.authorities:
@@ -65,21 +68,23 @@ class Resolver(object):
             except socket.timeout:
                 pass
 
-	def save_cache():
+	def save_cache(self):
             if self.caching:
                 if self.cache is not None:
                     self.cache.write_cache_file()
+
+    def is_valid_hostname(self, hostname):
+        valid_hostnames = "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$"
+        return re.match(valid_hostnames, hostname)
 
     def gethostbyname(self, hostname):
         aliaslist = []
         ipaddrlist = []
         hints = self.nameservers
-        
         #0. Check if hostname is a valid FQDN.
-        valid = is_valid_hostname(hostname)
-        if valid:
-            if hostname not in[valid[0], valid[0] + "."]:
-                return hostname, [], []
+        valid = self.is_valid_hostname(hostname)
+        if not valid:
+            return hostname, [], []
 
         #1. See if the answer is in local information, and if so return it to the client.
         #TODO: check of we authorative zijn. Zo ja, geef dat ipv resultaat uit cache
@@ -106,9 +111,13 @@ class Resolver(object):
         query = dns.message.Message(header, [question])
         
         while hints != []:
+            responses = self.send_query(query, hints)
             hints = []
-            reponses = send_query(query, hints)
-            
+
+            if responses is None:
+                print("Not a single server responded... something is wrong.")
+                return hostname, [], []
+
             #4. Analyze the response
             for answer in responses.answers:
                 if answer.type == Type.A and (answer.name == hostname or answer.name in aliaslist):  
