@@ -44,15 +44,8 @@ class Resolver(object):
             pass
         
 
-    def send_query(self, hostname, servers):
-        question = dns.message.Question(hostname, Type.A, Class.IN)
-        header = dns.message.Header(identifier, 0, 1, 0, 0, 0)
-        header.qr = 0
-        header.opcode = 0
-        header.rd = 1
-        query = dns.message.Message(header, [question])
+    def send_query(self, query, servers):
         responses = []
-
         for server in servers:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.settimeout(self.timeout)
@@ -60,6 +53,10 @@ class Resolver(object):
                 sock.sendto(query.to_bytes(), (server, 53))
                 data = sock.recv(512)
                 response = dns.message.Message.from_bytes(data)
+                
+                if response.header.ident != query.header.ident:
+                    continue
+
                 responses += response
                 if self.caching:
                     for record in response.additionals + \
@@ -67,48 +64,6 @@ class Resolver(object):
                         self.cache.add_record(record)
             except socket.timeout:
                 pass
-
-    def gethostbyname(self, hostname):
-        """ Translate a host name to IPv4 address.
-
-        Currently this method contains an example. You will have to replace
-        this example with example with the algorithm described in section
-        5.3.3 in RFC 1034.
-
-        Args:
-            hostname (str): the hostname to resolve
-
-        Returns:
-            (str, [str], [str]): (hostname, aliaslist, ipaddrlist)
-        """
-        timeout = 2 # the time waited for a response
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(timeout)
-
-        # Create and send query
-        question = dns.message.Question(hostname, Type.A, Class.IN)
-        header = dns.message.Header(identifier, 0, 1, 0, 0, 0)
-        header.qr = 0
-        header.opcode = 0
-        header.rd = 1
-        query = dns.message.Message(header, [question])
-        sock.sendto(query.to_bytes(), ("8.8.8.8", 53))
-
-        # Receive response
-        data = sock.recv(512)
-        response = dns.message.Message.from_bytes(data)
-
-        # Get data
-        aliases = []
-        for additional in response.additionals:
-            if additional.type_ == Type.CNAME:
-                aliases.append(additional.rdata.data)
-        addresses = []
-        for answer in response.answers:
-            if answer.type_ == Type.A:
-                addresses.append(answer.rdata.data)
-
-        return hostname, aliases, addresses
 
 	def save_cache():
             if self.caching:
@@ -118,6 +73,7 @@ class Resolver(object):
     def gethostbyname(self, hostname):
         aliaslist = []
         ipaddrlist = []
+        hints = self.nameservers
         
         #0. Check if hostname is a valid FQDN.
         valid = is_valid_hostname(hostname)
@@ -134,13 +90,13 @@ class Resolver(object):
             for address in self.cache.lookup(hostname, Type.A, Class.IN):
                 ipaddrlist.append(address)
 
-        if ipaddrlist is not []:
+        if ipaddrlist != []:
             return hostname, aliaslist, ipaddrlist
 
         #2. Find the best servers to ask.
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.settimeout(self.timeout)
+        #TODO: dat doen ipv aan alle bekende sturen
 
+        #3. Send them queries until one returns a response.
         identifier = (self.identifier + random.randint(1,2048)) % 25535
         question = dns.message.Question(hostname, Type.A, Class.IN)
         header = dns.message.Header(identifier, 0, 1, 0, 0, 0)
@@ -148,51 +104,36 @@ class Resolver(object):
         header.opcode = 0
         header.rd = 1
         query = dns.message.Message(header, [question])
+        
+        while hints != []:
+            hints = []
+            reponses = send_query(query, hints)
+            
+            #4. Analyze the response
+            for answer in responses.answers:
+                if answer.type == Type.A and (answer.name == hostname or answer.name in aliaslist):  
+                    ipaddrlist.append(answers.rdata.data)
+                if answer.type == Type.CNAME and (answer.name == hostname or answer.name in aliaslist):
+                    if answer.rdata.data not in aliases:
+                        aliaslist.append(answer.rdata.data)
 
-        #Volgens de RFC kan dit beter voor van specifieke servers langzaam naar de root servers te gaan
-        stack = [ROOT_SERVER, query for ROOT_SERVER in Consts.ROOT_SERVERS]
+            for additional in responses.additionals:
+                if additional.type == Type.CNAME and (additional.name == hostname or additional.name in aliaslist):
+                    if additional.rdata.data not in aliaslist:
+                        aliaslist.append(additional.rdata.data)
 
-        #3. Send them queries until one returns a response.
-        while stack is not []:
-            server, query = stack.pop()
-            s.sendto(query.to_bytes(), (server, 53))
-            try:
-                data = s.recv(2048)
-                response = Message.from_bytes(data)
-            except:
-                continue
+            if addresses != []:
+                return hostname, aliases, addresses
 
-            if response.header.ident != identifier:
-                continue
+            for authority in response.authorities:
+                if authority.Type == Type.NS:
+                    hints = [authority] + hints
 
-            #if response.
-
-        #4. Analyze the response, either:
-        aliases = []
-        for additional in response.additionals:
-            if additional.type_ == Type.CNAME:
-                aliases.append(additional.rdata.data)
-                self.cache.add_record(additional)
-
-        addresses = []
-        for answer in response.answers:
-            if answer.type_ == Type.A:
-                addresses.append(answer.rdata.data)
-                self.cache.add_record(answer)
-
-        if addresses is not []:
-            return hostname, aliases, addresses
-
-        for authority in response.authorities:
-            if authority.Type == Type.NS:
-                if self.caching:
-                    self.cache.add_record(authority)
-                stack.push((authority, query))
-
+        return hostname, [], []
+        #, either:
         #a. if the response answers the question or contains a name
         #   error, cache the data as well as returning it back to
         #   the client.
-
         #b. if the response contains a better delegation to other
         #   servers, cache the delegation information, and go to
         #   step 2.
@@ -205,4 +146,4 @@ class Resolver(object):
         #   bizarre contents, delete the server from the SLIST and
         #   go back to step 3.
         
-        return hostname, [], []
+        
