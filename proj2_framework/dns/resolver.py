@@ -10,6 +10,7 @@ DNS server, but with a different list of servers.
 import socket
 import random
 import re
+import time
 
 from dns.classes import Class
 from dns.types import Type
@@ -46,7 +47,6 @@ class Resolver(object):
             #Vraag even rond of deze feature wel/niet ondersteund moet worden. Na wat googelen lijkt het ongewoon te zijn om het te supporten, maar het staat wel in de rfc.
             pass
         
-
     def send_query(self, query, servers):
         responses = []
         for server in servers:
@@ -63,6 +63,7 @@ class Resolver(object):
                 if self.caching:
                     for record in response.additionals + \
                             response.answers + response.authorities:
+                        record.ttl = int(time.time() + self.ttl)
                         self.cache.add_record(record)
             except socket.timeout:
                 pass
@@ -90,10 +91,10 @@ class Resolver(object):
         #TODO: check of we authorative zijn. Zo ja, geef dat ipv resultaat uit cache
         if self.caching:   		
             for alias in self.cache.lookup(hostname, Type.CNAME, Class.IN):
-                aliaslist.append(alias)
+                aliaslist.append(alias.rdata.data)
             
             for address in self.cache.lookup(hostname, Type.A, Class.IN):
-                ipaddrlist.append(address)
+                ipaddrlist.append(address.rdata.data)
 
         if ipaddrlist != []:
             return hostname, aliaslist, ipaddrlist

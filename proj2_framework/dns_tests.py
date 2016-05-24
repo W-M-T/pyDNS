@@ -40,7 +40,7 @@ class TestResolverCache(unittest.TestCase):
     def testResolveInvalidCachedFQDN(self):
         shuckleRecord = dns.resource.ResourceRecord("s.h.u.c.k.l.e",\
                 dns.types.Type.A, dns.classes.Class.IN,\
-                5, dns.resource.RecordData("42.42.42.42"))
+                int(time.time() + 5), dns.resource.RecordData("42.42.42.42"))
         self.resolver.cache.add_record(shuckleRecord)
 
         #Server checks if FQDN is valid before processing, therefore
@@ -52,10 +52,9 @@ class TestResolverCache(unittest.TestCase):
         self.assertEqual(["42.42.42.42"], ad)
 
     def testResolveExpiredInvalidCachedFQDN(self):
-        #TODO: check of TTL relatieve tijd is of absolute tijd
         shuckleRecord = dns.resource.ResourceRecord("s.h.u.c.k.l.e",\
                 dns.types.Type.A, dns.classes.Class.IN,\
-                5, dns.resource.RecordData("42.42.42.42"))
+                int(time.time() + 5), dns.resource.RecordData("42.42.42.42"))
         self.resolver.cache.add_record(shuckleRecord)
 
         time.sleep(5+1)

@@ -22,6 +22,7 @@ if __name__ == "__main__":
 
     # Start server
     server = dns.server.Server(args.port, args.caching, args.ttl)
+    
     try:
         server.serve()
         print("[*] - Server ended.")

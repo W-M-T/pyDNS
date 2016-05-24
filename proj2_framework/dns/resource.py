@@ -34,7 +34,7 @@ class ResourceRecord(object):
     def to_bytes(self, offset, composer):
         """ Convert ResourceRecord to bytes """
         name = composer.to_bytes(offset, [self.name])
-        offset += len(name)
+        offset += len(name) + 10
         rdata = self.rdata.to_bytes(offset, composer)
         return (name +
             struct.pack("!HHIH",
