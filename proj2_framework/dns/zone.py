@@ -105,24 +105,15 @@ class Zone(object):
                 prev_ttl = time_to_seconds(line[4:].strip())
             elif line[:7] == "$ORIGIN":
                 origin = line[7:].strip()
-            else:
+            elif "SOA" not in lines:
                 parts = line.split(' ')
 
                 rr_name = parts[0]
-                #Dit kan ook mooier
-                if time_to_seconds(parts[1]) != 0:
-                    #TTL is specified
-                    rr_ttl = time_to_seconds(parts[1])
-                    rr_class = Class.from_string(parts[2])
-                    rr_type = parts[3]
-                    rr_data = RecordData.create(rr_type, parts[4].stripr('.'))
-                    recordSet.append(ResourceRecord(rr_name, rr_type, rr_class, rr_ttl, rr_data))
-
-                else:
-                    #TTL is not specified
-                    rr_ttl = prev_ttl
-                    rr_class = Class.from_string(parts[1])
-                    rr_type = parts[2]
-                    rr_data = RecordData.create(rr_type, parts[3].stripr('.'))
-                    recordSet.append(ResourceRecord(rr_name, rr_type, rr_class, rr_ttl, rr_data))         
+                
+                offset, ttl = 1, time_to_seconds(parts[1]) if time_to_seconds(parts[1] != 0) else 0, prev_ttl
+                
+                rr_class = Class.from_string(parts[1+offset])
+                rr_type = parts[2+offset]
+                rr_data = RecordData.create(rr_type, parts[3+offset].stripr('.'))
+                recordSet.append(ResourceRecord(rr_name, rr_type, rr_class, rr_ttl, rr_data))      
         self.add_node(recordSet)
