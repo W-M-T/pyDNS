@@ -105,7 +105,7 @@ class Zone(object):
                 prev_ttl = time_to_seconds(line[4:].strip())
             elif line[:7] == "$ORIGIN":
                 origin = line[7:].strip()
-            elif "SOA" not in lines:
+            elif "SOA" not in line:
                 parts = line.split(' ')
 
                 rr_name = parts[0]
