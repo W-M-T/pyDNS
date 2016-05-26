@@ -113,12 +113,13 @@ class Resolver(object):
         
         while hints != []:
             responses = self.send_query(query, [hints[0]])
-            #responses = self.send_query(query, hints)
-            #Zoek een compromis tussen de twee regels hierboven
+
             hints = []
+            while responses is None and hints:
+            	hints = hints[1:]
+            	responses = self.send_query(query, [hints[0]])
 
             if responses is None:
-                print("Not a single server responded... something is wrong.")
                 return hostname, [], []
 
             #4. Analyze the response
@@ -143,20 +144,3 @@ class Resolver(object):
                         hints = [authority.rdata.data] + hints
 
         return hostname, [], []
-        #, either:
-        #a. if the response answers the question or contains a name
-        #   error, cache the data as well as returning it back to
-        #   the client.
-        #b. if the response contains a better delegation to other
-        #   servers, cache the delegation information, and go to
-        #   step 2.
-
-        #c. if the response shows a CNAME and that is not the
-        #   answer itself, cache the CNAME, change the SNAME to the
-        #   canonical name in the CNAME RR and go to step 1.
-
-        #d. if the response shows a servers failure or other
-        #   bizarre contents, delete the server from the SLIST and
-        #   go back to step 3.
-        
-        

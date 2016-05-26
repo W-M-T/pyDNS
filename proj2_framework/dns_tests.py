@@ -68,7 +68,28 @@ class TestResolverCache(unittest.TestCase):
 
 
 class TestServer(unittest.TestCase):
-    pass
+    def testSolveFQDNDirectAuthority(self):
+        h1, al1, ad1 = self.resolver.gethostbyname("shuckle.ru.nl")
+        h2, al2, ad2 = self.offline_resolver.gethostbyname("ru.nl")
+
+        self.assertEqual(h1, h2)
+        self.assertEqual(al1, al2)
+        self.assertEqual(ad1, ad2)
+
+    def testSolveFQDNNoDirectAuthority(self):
+        h1, al1, ad1 = self.resolver.gethostbyname("ru.nl")
+        h2, al2, ad2 = self.offline_resolver.gethostbyname("ru.nl")
+
+        self.assertEqual(h1, h2)
+        self.assertEqual(al1, al2)
+        self.assertEqual(ad1, ad2)
+
+    def testSolveFQDNNotInZone(self):
+        pass
+
+    def testParallelRequest(self):
+        pass
+
 
 
 if __name__ == "__main__":

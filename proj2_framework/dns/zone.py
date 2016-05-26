@@ -1,5 +1,6 @@
 #!/usr/bin/env python2
 import re
+import dns.zone
 
 """ Zones of domain name space 
 
@@ -43,7 +44,7 @@ class Zone(object):
         """
         self.records[name] = record_set
 
-    def read_master_file(self, filename):
+    def read_master_file(self, filename=Consts.ZONE_FILE):
         """ Read the zone from a master file
 
         See section 5 of RFC 1035.

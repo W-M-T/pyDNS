@@ -18,3 +18,6 @@ ROOT_SERVERS = [
 #Relative path to the cache file's location on disk
 CACHE_FILE = "cache.json"
 CACHE_TIMESTAMP = "cache_timestamp.json"
+
+#Relative path to the zone file's location on disk
+ZONE_FILE = "zone.txt"
