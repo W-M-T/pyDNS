@@ -11,6 +11,7 @@ from threading import Thread, Lock
 import platform
 import dns.message
 import dns.resolver
+import dns.zone
 
 lock = Lock()
 
@@ -18,24 +19,28 @@ lock = Lock()
 class RequestHandler(Thread):
     """ A handler for requests to the DNS server """
 
-    def __init__(self, serversocket, clientIP, message, resolver, catalog):
+    def __init__(self, serversocket, clientIP, ttl, message, resolver, catalog):
         """ Initialize the handler thread """
-        super().__init__()
+        super(RequestHandler, self).__init__()
         self.daemon = True
-        self.serversocket = serversocket
+        self.socket = serversocket
         self.clientIP = clientIP
+        self.ttl = ttl
         self.message = message
         self.resolver = resolver
         self.catalog = catalog
 
-        
-    def handle_request(self):
-        if len(self.message.questions) != 1:
-            return
+    def check_zone(self, hname):
+        return hname, [], [], False
 
+    def handle_request(self):
+        print("[*] - Handling request.")
+        if len(self.message.questions) != 1:
+            print("[-] - Invalid request.")
+            return
         hname = self.message.questions[0].qname
         ident = self.message.header.ident
-        (hostname, answer, authority, found) = check_zone(hname)
+        (hostname, answer, authority, found) = self.check_zone(hname)
 
         response = None
 
@@ -47,10 +52,10 @@ class RequestHandler(Thread):
             header.opcode = 0
             header.qr = 1
 
-            response = Message(header, self.message.questions, answer, authority)
+            response = dns.message.Message(header, self.message.questions, answer, authority)
 
         else:
-            if self.message.header.rq == 256:
+            if self.message.header.rd == 256:
                 (h, al, ad) = self.resolver.gethostbyname(hname)
                 if ad:
                     header = dns.message.Header(ident, 0, 1, len(answer), len(authority), 0)
@@ -59,13 +64,14 @@ class RequestHandler(Thread):
                     header.opcode = 0
                     header.qr = 1
 
-                    aliases = [ResourceRecord(hostname, Type.CNAME, Class.IN, self.ttl, CNAMERecordData(alias)) for alias in al]
-                    addresses = [ResourceRecord(hostname, Type.CNAME, CLass.IN, self.ttl, ARecordData(address)) for address in ad]
+                    aliases = [dns.resource.ResourceRecord(hostname, dns.types.Type.CNAME, dns.classes.Class.IN, self.ttl, dns.resource.CNAMERecordData(alias)) for alias in al]
+                    addresses = [dns.resource.ResourceRecord(hostname, dns.types.Type.CNAME, dns.classes.Class.IN, self.ttl, dns.resource.ARecordData(address)) for address in ad]
 
-                    response = Message(header, self.message.questions, aliases + addresses)
+                    response = dns.message.Message(header, self.message.questions, aliases + addresses)
         
         with lock:
-            self.socket.sendto(respone.to_bytes(), self.clientIP)
+            print("[+] - Sending response.")
+            self.socket.sendto(response.to_bytes(), self.clientIP)
 
     def run(self):
         """ Run the handler thread """
@@ -90,13 +96,12 @@ class Server(object):
         self.ttl = ttl if ttl > 0 else 0
         self.port = port
         self.done = False
-        self.resolver = dns.resolver.Resolver(self.caching, self.ttl)
+        self.resolver = dns.resolver.Resolver(5, self.caching, self.ttl)
 
         self.zone = dns.zone.Zone()
-        self.zone.read_master_file()
         
         self.catalog = dns.zone.Catalog()
-        self.catalog.add_zone("ru.nl", self.zone)
+        self.catalog.add_zone("ru.nl", self.zone.read_master_file())
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -111,12 +116,12 @@ class Server(object):
             data, addr = self.socket.recvfrom(1024)
 
             try:
-                message = Message.from_bytes(data)
+                message = dns.message.Message.from_bytes(data)
             except:
                 print("[-] - Received invalid data.")
                 continue
 
-            rh = RequestHandler(self.socket, addr, message, self.resolver)
+            rh = RequestHandler(self.socket, addr, self.ttl, message, self.resolver, self.catalog)
             rh.start()
 
     def shutdown(self):

@@ -1,0 +1,4 @@
+$TTL			3600
+shuckle.ru.nl.	1337	IN	CNAME	ru.nl
+cs.ru.nl.		1337	IN	NS		ns1.science.ru.nl
+ru.nl.			1337	IN	A		131.174.78.60

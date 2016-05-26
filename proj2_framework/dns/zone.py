@@ -1,6 +1,9 @@
 #!/usr/bin/env python2
 import re
 import dns.zone
+import dns.consts as Consts
+import dns.classes
+import dns.resource
 
 """ Zones of domain name space 
 
@@ -55,7 +58,7 @@ class Zone(object):
         try:
             with open(filename) as infile:
                 data = infile.read()
-                self.parse_and_load(data)
+                return self.load_and_parse(data)
         except IOError, e:
             print("An error has occured while reading the zone from file: " \
                 + str(filename) + " - " + str(e))
@@ -82,10 +85,9 @@ class Zone(object):
             return 0
 
     def time_to_seconds(self, timestring):
-        return sum(map(time_to_seconds_helper, re.findall(re.compile("\d+\w"), timestring)))
+        return sum(map(self.time_to_seconds_helper, re.findall(re.compile("\d+\w"), timestring)))
 
-    #TODO: Laten werken met SOA regels en met regels die niet beginnen met een naam maar met IN
-    def parse_and_load(self, content):
+    def load_and_parse(self, content):
         content = re.sub(re.compile(";.*?\n"), "\n", content) #Remove comments
         content = re.sub(re.compile("\n\n*\n") , "\n", content) #Remove whitespaces
         content = re.sub(re.compile("  * ") , " ", content) #Remove multiple spaces between words
@@ -94,6 +96,7 @@ class Zone(object):
         content = re.sub(re.compile("\n\t*") , "\n", content) #Remove tabs at start of line
         content = re.compile(r'\(.*?\)', re.DOTALL)\
         .sub(lambda x: x.group().replace('\n', ''), content) #Remove newlines between ()
+        content = re.sub(re.compile("\t+") , " ", content) #Remove tabs between words
 
         default_ttl = None
         origin = None
@@ -102,19 +105,21 @@ class Zone(object):
 
         for line in content.split('\n'):
             if line[:4] == "$TTL":
-                print(line[4:].strip())
-                prev_ttl = time_to_seconds(line[4:].strip())
+                prev_ttl = self.time_to_seconds(line[4:].strip())
             elif line[:7] == "$ORIGIN":
                 origin = line[7:].strip()
             elif "SOA" not in line:
                 parts = line.split(' ')
-
                 rr_name = parts[0]
                 
-                offset, ttl = 1, time_to_seconds(parts[1]) if time_to_seconds(parts[1] != 0) else 0, prev_ttl
-                
-                rr_class = Class.from_string(parts[1+offset])
+                rr_ttl = self.time_to_seconds(parts[1])
+                offset = int(rr_ttl == 0)
+                if offset:
+                    rr_ttl = prev_ttl
+
+                rr_class = dns.classes.Class.from_string(parts[1+offset])
                 rr_type = parts[2+offset]
-                rr_data = RecordData.create(rr_type, parts[3+offset].stripr('.'))
-                recordSet.append(ResourceRecord(rr_name, rr_type, rr_class, rr_ttl, rr_data))      
-        self.add_node(recordSet)
+                rr_data = dns.resource.RecordData.create(rr_type, parts[3+offset].rstrip('.'))
+                recordSet.append(dns.resource.ResourceRecord(rr_name, rr_type, rr_class, rr_ttl, rr_data))      
+        
+        return recordSet

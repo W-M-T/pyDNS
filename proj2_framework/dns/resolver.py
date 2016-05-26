@@ -23,7 +23,7 @@ import dns.consts
 class Resolver(object):
     """ DNS resolver """
     
-    def __init__(self, timeout, caching, ttl, nameservers=[]):
+    def __init__(self, timeout, caching, ttl, nameservers=[], use_rs=True):
         """ Initialize the resolver
         
         Args:
@@ -36,16 +36,9 @@ class Resolver(object):
         if caching:
             self.cache = RecordCache(self.ttl)
         self.identifier = random.randint(0, 65535)
-        self.nameservers = nameservers + dns.consts.ROOT_SERVERS
-
-    def handle_query(self, query):
-        if len(query.questions) == 1:
-            #Verwerk de vraag juist
-            pass
-        else:
-            #Stuur geen reactie, of zoek uit watvoor error je voor een niet-ondersteunde functie terug moet geven.
-            #Vraag even rond of deze feature wel/niet ondersteund moet worden. Na wat googelen lijkt het ongewoon te zijn om het te supporten, maar het staat wel in de rfc.
-            pass
+        self.nameservers = nameservers
+        if use_rs:
+        	self.nameservers += dns.consts.ROOT_SERVERS
         
     def send_query(self, query, servers):
         responses = []
@@ -54,7 +47,7 @@ class Resolver(object):
             sock.settimeout(self.timeout)
             try:
                 sock.sendto(query.to_bytes(), (server, 53))
-                data = sock.recv(512)
+                data = sock.recv(1024)
                 response = dns.message.Message.from_bytes(data)
                 if response.header.ident != query.header.ident:
                     continue
@@ -82,13 +75,11 @@ class Resolver(object):
         aliaslist = []
         ipaddrlist = []
         hints = self.nameservers
-        #0. Check if hostname is a valid FQDN.
+
         valid = self.is_valid_hostname(hostname)
         if not valid:
             return hostname, [], []
 
-        #1. See if the answer is in local information, and if so return it to the client.
-        #TODO: check of we authorative zijn. Zo ja, geef dat ipv resultaat uit cache
         if self.caching:   		
             for alias in self.cache.lookup(hostname, Type.CNAME, Class.IN):
                 aliaslist.append(alias.rdata.data)
@@ -98,9 +89,6 @@ class Resolver(object):
 
         if ipaddrlist != []:
             return hostname, aliaslist, ipaddrlist
-
-        #2. Find the best servers to ask.
-        #TODO: dat doen ipv aan alle bekende sturen
 
         #3. Send them queries until one returns a response.
         identifier = (self.identifier + random.randint(1,2048)) % 25535

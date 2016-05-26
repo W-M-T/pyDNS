@@ -9,6 +9,7 @@ import dns.resolver
 import dns.resource
 import dns.types
 import dns.classes
+import dns.server
 
 
 """ Tests for your DNS resolver and server """
@@ -64,28 +65,33 @@ class TestResolverCache(unittest.TestCase):
         self.assertEqual([], al)
         self.assertEqual([], ad)
 
-
-
-
 class TestServer(unittest.TestCase):
+    def setUp(self):
+        self.resolver = dns.resolver.Resolver(5, False, 10)
+        self.offline_resolver = dns.resolver.Resolver(5, False, 10, ["localhost"], False)
+        #self.server = dns.server.Server(53, False, 5).serve()
+
     def testSolveFQDNDirectAuthority(self):
         h1, al1, ad1 = self.resolver.gethostbyname("shuckle.ru.nl")
         h2, al2, ad2 = self.offline_resolver.gethostbyname("ru.nl")
 
-        self.assertEqual(h1, h2)
         self.assertEqual(al1, al2)
         self.assertEqual(ad1, ad2)
 
     def testSolveFQDNNoDirectAuthority(self):
-        h1, al1, ad1 = self.resolver.gethostbyname("ru.nl")
-        h2, al2, ad2 = self.offline_resolver.gethostbyname("ru.nl")
+        h1, al1, ad1 = self.resolver.gethostbyname("cs.ru.nl")
+        h2, al2, ad2 = self.offline_resolver.gethostbyname("cs.ru.nl")
 
         self.assertEqual(h1, h2)
         self.assertEqual(al1, al2)
         self.assertEqual(ad1, ad2)
 
     def testSolveFQDNNotInZone(self):
-        pass
+        h, al, ad = self.offline_resolver.gethostbyname("hestia.dance")
+
+        self.assertEqual("hestia.dance", h)
+        self.assertEqual([], al)
+        self.assertEqual(["162.246.59.52"], ad)
 
     def testParallelRequest(self):
         pass
