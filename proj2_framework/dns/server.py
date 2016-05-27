@@ -31,7 +31,41 @@ class RequestHandler(Thread):
         self.catalog = catalog
 
     def check_zone(self, hname):
-        return hname, [], [], False
+        authority = []
+        answer = []
+
+        hparts = hname.split('.')
+
+        zone_match = None
+
+        #Check if hname is a subdomain for the root domain name
+        for rdn in self.catalog.zones:
+            zone = self.catalog.zones[rdn]
+            rdnparts = rdn.split('.')
+            if len(rdnparts) >= len(hparts):
+                for i in range(len(hparts)):
+                    if rdnparts[i:] == hparts:
+                        zone_match = zone
+
+        
+        if zone_match == None:
+            return hname, [], [], False
+
+        #Find the answer that is as specific as possible
+        for i in range(len(hparts)):
+            try:
+                rr = zone_match.records['.'.join(hparts[i:]) + '.']
+            except KeyError:
+                continue
+
+            if rr.type_ == dns.types.Type.NS:
+                authority.append(rr)
+            if rr.type_ in [dns.types.Type.A, dns.types.Type.CNAME]:
+                answer.append(rr)
+
+        return hname, answer, authority, (answer != [] or authority != [])
+
+
 
     def handle_request(self):
         print("[*] - Handling request.")
@@ -99,9 +133,10 @@ class Server(object):
         self.resolver = dns.resolver.Resolver(5, self.caching, self.ttl)
 
         self.zone = dns.zone.Zone()
-        
+        self.zone.read_master_file()
+
         self.catalog = dns.zone.Catalog()
-        self.catalog.add_zone("ru.nl", self.zone.read_master_file())
+        self.catalog.add_zone("ru.nl", self.zone)
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

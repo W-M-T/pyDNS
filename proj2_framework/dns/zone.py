@@ -58,7 +58,7 @@ class Zone(object):
         try:
             with open(filename) as infile:
                 data = infile.read()
-                return self.load_and_parse(data)
+                self.load_and_parse(data)
         except IOError, e:
             print("An error has occured while reading the zone from file: " \
                 + str(filename) + " - " + str(e))
@@ -120,6 +120,4 @@ class Zone(object):
                 rr_class = dns.classes.Class.from_string(parts[1+offset])
                 rr_type = parts[2+offset]
                 rr_data = dns.resource.RecordData.create(rr_type, parts[3+offset].rstrip('.'))
-                recordSet.append(dns.resource.ResourceRecord(rr_name, rr_type, rr_class, rr_ttl, rr_data))      
-        
-        return recordSet
+                self.add_node(rr_name, dns.resource.ResourceRecord(rr_name, dns.types.Type.by_string[rr_type], rr_class, rr_ttl, rr_data))
