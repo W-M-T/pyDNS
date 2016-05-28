@@ -67,6 +67,8 @@ class RecordCache(object):
         self.lastCleanup = time.time()
     
     def cleanup(self):
+        """ Remove all entries in the cache whose TTL has expired """
+
         self.lock.acquire()
      	curTime = int(time.time())
         self.records = [record for record in self.records if record.ttl > curTime]
@@ -128,21 +130,19 @@ class RecordCache(object):
                     
                     recordlist = json.loads(data, object_hook=resource_from_json)
 
-                    #update de ttls
+                    #Update the TTLs
                     for entry in recordlist:
                         entry.ttl = entry.ttl - (timestamp - last_timestamp)
 
-                    #gooi alle expired entries weg
+                    #Don't add the entries whose TTL is expired
                     recordlist = [entry for entry in recordlist if entry.ttl > 0]
 
-                    #sla de entries op met een timestamp die aangeeft vanaf welk absoluut punt de ttl telde
+                    #Save all entries together with the time from which the TTL counts
                     self.records = [(timestamp, entry) for entry in recordlist]
 
         except (ValueError, IOError), e:
             print("An error has occured while loading cache from disk: " + str(e))
             self.records = []
-            #Gaat dit al fout als de file niet bestaat?
-
 
     def write_cache_file(self):
         """ Write the cache file to disk """

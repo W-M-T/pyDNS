@@ -31,6 +31,17 @@ class RequestHandler(Thread):
         self.catalog = catalog
 
     def check_zone(self, hname):
+        """ Checks the catalog for entries regarding given hname
+
+        Args:
+            hname (str): the FQDN of the host we want to look up
+
+        Returns:
+            hname (str): the FQDN of the host we want to look up,
+            answer ([ResourceRecord]): the records that directly give an IP address,
+            authority ([ResourceRecord]): the records that tell about the nameservers that "know more",
+            A boolean that tells if we found something
+        """
         authority = []
         answer = []
 
@@ -68,6 +79,8 @@ class RequestHandler(Thread):
 
 
     def handle_request(self):
+        """ Attempts to answer the received query """
+
         print("[*] - Handling request.")
         if len(self.message.questions) != 1:
             print("[-] - Invalid request.")
@@ -161,6 +174,8 @@ class Server(object):
 
     def shutdown(self):
         """ Shutdown the server """
-        print("MAY YE FIND MANY SHUCKLES")
+        print("[*] - Shutting down.")
         self.done = True
         self.socket.close()
+        self.resolver.save_cache()
+        print("[+] - Shut down complete. May your framerates be high and our temperatures low.")

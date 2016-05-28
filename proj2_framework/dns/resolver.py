@@ -41,6 +41,15 @@ class Resolver(object):
         	self.nameservers += dns.consts.ROOT_SERVERS
         
     def send_query(self, query, servers):
+        """ Send query to each server in servers
+
+        Args: 
+            query (Message): the query that is to be send
+            servers ([str]): IP addresses of the server that the query must be sent to
+        
+        Returns:
+            responses ([Message]): the responses received converted to Messages
+        """
         responses = []
         for server in servers:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -63,15 +72,35 @@ class Resolver(object):
         return responses
 
 	def save_cache(self):
+        """ Save the cache if appropriate """
             if self.caching:
                 if self.cache is not None:
                     self.cache.write_cache_file()
 
     def is_valid_hostname(self, hostname):
+        """ Check if hostname could be a valid hostname
+
+        Args:
+            hostname (str): the hostname that is to be checked
+
+        Returns:
+            boolean indiciting if hostname could be valid
+        """
         valid_hostnames = "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$"
         return re.match(valid_hostnames, hostname)
 
     def gethostbyname(self, hostname):
+        """ Resolve hostname to an IP address
+
+        Args:
+            hostname (str): the FQDN that we want to resolve
+
+        Returns:
+            hostname (str): the FQDN that we want to resolve,
+            aliaslist ([str]): list of aliases of the hostname,
+            ipaddrlist ([str]): list of IP addresses of the hostname 
+
+        """
         aliaslist = []
         ipaddrlist = []
         hints = self.nameservers
@@ -90,7 +119,7 @@ class Resolver(object):
         if ipaddrlist != []:
             return hostname, aliaslist, ipaddrlist
 
-        #3. Send them queries until one returns a response.
+        #Send them queries until one returns a response.
         identifier = (self.identifier + random.randint(1,2048)) % 25535
         question = dns.message.Question(hostname, Type.A, Class.IN)
         header = dns.message.Header(identifier, 0, 1, 0, 0, 0)
@@ -110,7 +139,7 @@ class Resolver(object):
             if responses is None:
                 return hostname, [], []
 
-            #4. Analyze the response
+            #Analyze the response
             for response in responses:
                 for answer in response.answers:
                     if answer.type_ == Type.A and (answer.name == hostname or answer.name in aliaslist):  
