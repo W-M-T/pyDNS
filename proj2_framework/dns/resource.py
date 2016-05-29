@@ -16,7 +16,7 @@ from dns.types import Type
 
 class ResourceRecord(object):
     """ DNS resource record """
-    def __init__(self, name, type_, class_, ttl, rdata, timestamp = None):
+    def __init__(self, name, type_, class_, ttl, rdata, timestamp = 0):
         """ Create a new resource record
 
         Args:
@@ -33,7 +33,7 @@ class ResourceRecord(object):
         self.class_   = class_
         self.ttl      = ttl
         self.rdata    = rdata
-        self.timestamp = timestamp
+        self.timestamp = timestamp#Set to zero if not provided, so it will expire immediately when put in the cache
 
     def to_bytes(self, offset, composer):
         """ Convert ResourceRecord to bytes """
