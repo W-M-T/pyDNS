@@ -30,7 +30,7 @@ class ResourceEncoder(json.JSONEncoder):
                 "type": Type.to_string(obj.type_),
                 "class": Class.to_string(obj.class_),
                 "ttl": obj.ttl,
-                "rdata": obj.rdata.data
+                "rdata": obj.rdata.data,
                 "timestamp": obj.timestamp
             }
         return json.JSONEncoder.default(self, obj)
@@ -116,7 +116,7 @@ class RecordCache(object):
         found = self.lookup(new_rec.name, new_rec.type_, new_rec.class_)
         if found:
             for record in self.records:#Het zou er maar 1 mogen zijn, maar bij een foute json-file kunnen het er meerdere zijn
-                if (record.ttl + record.timestamp < new_rec.ttl + new_rec.timestamp)
+                if (record.ttl + record.timestamp < new_rec.ttl + new_rec.timestamp):
                     record.ttl = new_rec.ttl
                     record.timestamp = new_rec.timestamp
         else:

@@ -34,7 +34,7 @@ class Resolver(object):
         self.caching = caching
         self.ttl = ttl if ttl > 0 else 0 #Deze check is niet nodig voor de resolver gemaakt via de server, maar wel voor de resolver gemaakt door de client
         if caching:
-            self.cache = RecordCache(self.ttl)
+            self.cache = RecordCache()
         self.identifier = random.randint(0, 65535)
         self.nameservers = nameservers
         if use_rs:
@@ -71,11 +71,11 @@ class Resolver(object):
                 pass
         return responses
 
-	def save_cache(self):
+    def save_cache(self):
         """ Save the cache if appropriate """
-            if self.caching:
-                if self.cache is not None:
-                    self.cache.write_cache_file()
+        if self.caching:
+            if self.cache is not None:
+                self.cache.write_cache_file()
 
     def is_valid_hostname(self, hostname):
         """ Check if hostname could be a valid hostname
