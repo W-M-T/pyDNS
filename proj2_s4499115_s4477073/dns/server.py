@@ -69,8 +69,8 @@ class RequestHandler(Thread):
         authority = []
         answer = []
 
-        for i in range(len(hparts), 1, -1):
-            subaddress = ".".join(hparts)
+        for i in range(len(hparts)):
+            subaddress = ".".join(hparts[i:])
             print(subaddress)
             
             for fqdn, record in zone_match.records.iteritems():
