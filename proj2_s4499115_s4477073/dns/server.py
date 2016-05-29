@@ -82,14 +82,14 @@ class RequestHandler(Thread):
                     elif self.message.questions[0].qtype != Type.CNAME and record.type == Type.CNAME:
                         answer.append(record)
                         #Find the info for this new cname if you have it
-                        extra_answer, extra_authority, found = self.check_zone(hname)
+                        (extra_answer, extra_authority, found) = self.check_zone(hname)
                         answer = answer + extra_answer
                         authority = authority + extra_authority
                         
                 elif fqdn == subaddress and record.type == Type.NS:
                     authority.append(record)
 
-        return list(set(answer)), list(set(authority)), (answer != [] or authority != [])
+        return (list(set(answer)), list(set(authority)), (answer != [] or authority != []))
 
 
 
@@ -102,13 +102,11 @@ class RequestHandler(Thread):
             return
         hname = self.message.questions[0].qname
         ident = self.message.header.ident
-        answer, authority, found = self.check_zone(hname)
-        
-        print(str(self.message.header.rd))
+        (answer, authority, found) = self.check_zone(hname)
         
         if found:
             header = dns.message.Header(ident, 0, 1, len(answer), len(authority), 0)
-            header.rd = self.message.header.rd 
+            header.rd = 1 if self.message.header.rd == 256 else 0
             header.ra = 1
             header.aa = 1
             header.opcode = 0
@@ -116,11 +114,11 @@ class RequestHandler(Thread):
 
             sendResponse(dns.message.Message(header, self.message.questions, answer, authority))
 
-        elif self.message.header.rd == 1:
+        elif self.message.header.rd == 256:
             h, al, ad = self.resolver.gethostbyname(hname)
             if ad:
                 header = dns.message.Header(ident, 0, 1, len(answer), len(authority), 0)
-                header.rd = self.message.header.rd 
+                header.rd = 1 if self.message.header.rd == 256 else 0
                 header.ra = 1
                 header.opcode = 0
                 header.qr = 1
