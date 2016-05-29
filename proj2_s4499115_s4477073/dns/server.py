@@ -47,8 +47,6 @@ class RequestHandler(Thread):
             authority ([ResourceRecord]): the records that tell about the nameservers that "know more",
             A boolean that tells if we found something
         """
-        authority = []
-        answer = []
 
         hparts = hname.split('.')
 
@@ -67,19 +65,31 @@ class RequestHandler(Thread):
         if zone_match == None:
             return hname, [], [], False
 
-        #Find the answer that is as specific as possible
-        for i in range(len(hparts)):#Gebruik QTYPE en QCLASS hier
-            try:
-                rr = zone_match.records['.'.join(hparts[i:]) + '.']
-            except KeyError:
-                continue
+        #Find the answers
+        authority = []
+        answer = []
 
-            if rr.type_ == dns.types.Type.NS:
-                authority.append(rr)
-            if rr.type_ in [dns.types.Type.A, dns.types.Type.CNAME]:
-                answer.append(rr)
+        for i in range(len(hparts), 1, -1):
+            subaddress = ".".join(hparts)
+            print(subaddress)
+            
+            for fqdn, record in zone_match.records.iteritems():
+                
+                if fqdn == subaddress and record.type != Type.NS:
+                    if self.message.questions[0].qtype == record.type:
+                        answer.append(record)
+                        
+                    elif self.message.questions[0].qtype != Type.CNAME and record.type == Type.CNAME:
+                        answer.append(record)
+                        #Find the info for this new cname if you have it
+                        extra_answer, extra_authority, found = self.check_zone(hname)
+                        answer = answer + extra_answer
+                        authority = authority + extra_authority
+                        
+                elif fqdn == subaddress and record.type == Type.NS:
+                    authority.append(record)
 
-        return answer, authority, (answer != [] or authority != [])
+        return list(set(answer)), list(set(authority)), (answer != [] or authority != [])
 
 
 
@@ -93,8 +103,6 @@ class RequestHandler(Thread):
         hname = self.message.questions[0].qname
         ident = self.message.header.ident
         answer, authority, found = self.check_zone(hname)
-
-        response = None
         
         print(str(self.message.header.rd))
         
