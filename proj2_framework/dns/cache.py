@@ -79,7 +79,7 @@ class RecordCache(object):
         #gooi de entries weg met ttl <=0
         self.lock.acquire()
         self.records = [(timestamp, entry) for (timestamp, entry) in self.records if entry.ttl > 0]
-        self.lock.acquire()
+        self.lock.release()
 
         self.lastCleanup = int(time.time())
     
@@ -96,7 +96,8 @@ class RecordCache(object):
         """
         if (int(time.time()) - lastCleanup >= 3600)#Cache al een uur lang niet gecleaned
             cleanup()
-        
+            
+        self.lock.acquire()
         matchindexes = [i for i, e in self.records if e[1].dname == dname and e[1].type_ == type_ and e[1].class_ == class_]
         for i in matchindexes:
             now = int(time.time())
@@ -104,6 +105,7 @@ class RecordCache(object):
             temp[1].ttl = temp[1].ttl - (now - temp[0])
             temp[0] = now
             self.records[i] = temp
+        self.lock.release()
         
         return [i for i, e in self.records if entry.dname == dname and entry.type_ == type_ and entry.class_ == class_ and entry.ttl - (int(time.time()) - timestamp) > 0]
         
