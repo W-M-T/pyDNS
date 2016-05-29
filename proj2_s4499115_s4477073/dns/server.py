@@ -56,7 +56,7 @@ class RequestHandler(Thread):
         #Check if hname is a subdomain for the root domain name
         for rdn in self.catalog.zones:
             zone = self.catalog.zones[rdn]
-            rdnparts = rdn.split('.')
+            rdn_parts = rdn.split('.')
             if all(l == r for (l, r) in zip(reversed(hparts), reversed(rdnparts))) and len(hparts) <= len(rdnparts):
                 zone_match = zone
                 best_rdn_parts = rdn_parts
