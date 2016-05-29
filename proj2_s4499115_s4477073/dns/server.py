@@ -63,7 +63,7 @@ class RequestHandler(Thread):
                 
         
         if zone_match == None:
-            return hname, [], [], False
+            return [], [], False
 
         #Find the answers
         authority = []
