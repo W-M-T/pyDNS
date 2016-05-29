@@ -100,7 +100,7 @@ class RecordCache(object):
         #Verschuif de ttl en timestamp naar nu
         curTime = int(time.time())
         for record in foundrecords:
-            record.ttl = int(ttl - (curTime - record.timestamp))
+            record.ttl = int(record.ttl - (curTime - record.timestamp))
             record.timestamp = curTime
             
         return foundrecords
