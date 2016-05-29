@@ -143,10 +143,10 @@ class RecordCache(object):
                 self.records = recordlist
 
         except (ValueError, IOError), e:
-            #print("An error has occured while loading cache from disk: " + str(e))
+            print("An error has occured while loading cache from disk: " + str(e))
+            self.records = []
             with open(cache_file, 'w') as outfile:
                 outfile.write(json.dumps(self.records, cls=ResourceEncoder, indent=4))
-            self.records = []
 
     def write_cache_file(self):
         """ Write the cache file to disk """
