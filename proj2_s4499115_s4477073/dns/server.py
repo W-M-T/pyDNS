@@ -89,7 +89,7 @@ class RequestHandler(Thread):
                 elif fqdn.rstrip('.') == subaddress and record.type_ == Type.NS:
                     authority.append(record)
 
-        return list(set(answer)), list(set(authority)), (answer != [] or authority != [])
+        return list(set(answer)), list(set(authority)), (answer or authority)
 
 
 
