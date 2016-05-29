@@ -82,7 +82,7 @@ class RequestHandler(Thread):
                     elif self.message.questions[0].qtype != Type.CNAME and record.type == Type.CNAME:
                         answer.append(record)
                         #Find the info for this new cname if you have it
-                        (extra_answer, extra_authority, found) = self.check_zone(hname)
+                        extra_answer, extra_authority, extra_found = self.check_zone(hname)
                         answer = answer + extra_answer
                         authority = authority + extra_authority
                         
@@ -102,7 +102,7 @@ class RequestHandler(Thread):
             return
         hname = self.message.questions[0].qname
         ident = self.message.header.ident
-        (answer, authority, found) = self.check_zone(hname)
+        answer, authority, found = self.check_zone(hname)
         
         if found:
             header = dns.message.Header(ident, 0, 1, len(answer), len(authority), 0)
