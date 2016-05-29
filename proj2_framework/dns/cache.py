@@ -31,6 +31,7 @@ class ResourceEncoder(json.JSONEncoder):
                 "class": Class.to_string(obj.class_),
                 "ttl": obj.ttl,
                 "rdata": obj.rdata.data
+                "timestamp": obj.timestamp
             }
         return json.JSONEncoder.default(self, obj)
 
@@ -46,20 +47,20 @@ def resource_from_json(dct):
     class_ = Class.from_string(dct["class"])
     ttl = dct["ttl"]
     rdata = RecordData.create(type_, dct["rdata"])
-    return ResourceRecord(name, type_, class_, ttl, rdata)
+    timestamp = dct["timestamp"]
+    return ResourceRecord(name, type_, class_, ttl, rdata, timestamp)
 
 
 class RecordCache(object):
     """ Cache for ResourceRecords """
 
-    def __init__(self, ttl):
+    def __init__(self):
         """ Initialize the RecordCache
         
         Args:
             ttl (int): TTL of cached entries (if > 0)
         """
         self.records = []
-        self.ttl = ttl
         self.lock = threading.Lock()
 
         #Lees de cache in, update de ttls, gooi alle invalid data weg
@@ -91,10 +92,18 @@ class RecordCache(object):
 
         if (int(time.time()) - self.lastCleanup >= 3600): #Cache al een uur lang niet gecleaned
             self.cleanup()
-   
-        return [record for record in self.records \
+
+        foundrecords = [record for record in self.records \
         		if record.name == dname and record.type_ == type_ and record.class_ == class_ \
-        		and record.ttl > time.time()]#update ttl enzo voor dezen
+        		and record.ttl > time.time()]
+        
+        #Verschuif de ttl en timestamp naar nu
+        curTime = int(time.time())
+        for record in foundrecords:
+            record.ttl = int(ttl - (curTime - record.timestamp))
+            record.timestamp = curTime
+            
+        return foundrecords
         
     def add_record(self, new_rec):
         """ Add a new Record to the cache
@@ -106,11 +115,10 @@ class RecordCache(object):
         self.lock.acquire()
         found = self.lookup(new_rec.name, new_rec.type_, new_rec.class_)
         if found:
-            #Search again for the matching record, then update its TTL
-            for record in self.records:
-            	if record.name == new_rec.name and record.type_ == new_rec.type_ and record.class_ == new_rec.class_:
-                    record = new_record
-                    break#Kan maar 1 keer voorkomen, dus na eerste match mag je breaken
+            for record in self.records:#Het zou er maar 1 mogen zijn, maar bij een foute json-file kunnen het er meerdere zijn
+                if (record.ttl + record.timestamp < new_rec.ttl + new_rec.timestamp)
+                    record.ttl = new_rec.ttl
+                    record.timestamp = new_rec.timestamp
         else:
             self.records.append(new_record)
         self.lock.release()
@@ -123,22 +131,16 @@ class RecordCache(object):
         #Load from file
         try:
             with open(cache_file) as infile:
-                with open(Consts.CACHE_TIMESTAMP) as stampfile:
-                    data = infile.read()
-                    last_timestamp = stampfile.read()
-                    timestamp = int(time.time())
-                    
-                    recordlist = json.loads(data, object_hook=resource_from_json)
+                data = infile.read()
+                curTime = int(time.time())
+                
+                recordlist = json.loads(data, object_hook=resource_from_json)
 
-                    #Update the TTLs
-                    for entry in recordlist:
-                        entry.ttl = entry.ttl - (timestamp - last_timestamp)
+                #Don't add the entries whose TTL is expired
+                recordlist = [entry for entry in recordlist if entry.ttl + entry.timestamp > curTime]
 
-                    #Don't add the entries whose TTL is expired
-                    recordlist = [entry for entry in recordlist if entry.ttl > 0]
-
-                    #Save all entries together with the time from which the TTL counts
-                    self.records = [(timestamp, entry) for entry in recordlist]
+                #Save all entries together with the time from which the TTL counts
+                self.records = recordlist
 
         except (ValueError, IOError), e:
             print("An error has occured while loading cache from disk: " + str(e))
@@ -150,9 +152,6 @@ class RecordCache(object):
         
         try:
             with open(Consts.CACHE_FILE, 'w') as outfile:
-                outfile.write(string = json.dumps([entry for (stamp, entry) in self.records], cls=ResourceEncoder, indent=4))
-            encoder = json.JSONEncoder()
-            with open(Consts.CACHE_TIMESTAMP, 'w') as outfile:
-                outfile.write(int(time.time()))
+                outfile.write(string = json.dumps(self.records, cls=ResourceEncoder, indent=4))
         except IOError, e:
             print("An error has occured while writing cache to disk: " + str(e))

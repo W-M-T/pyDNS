@@ -16,7 +16,7 @@ from dns.types import Type
 
 class ResourceRecord(object):
     """ DNS resource record """
-    def __init__(self, name, type_, class_, ttl, rdata):
+    def __init__(self, name, type_, class_, ttl, rdata, timestamp = None):
         """ Create a new resource record
 
         Args:
@@ -24,12 +24,16 @@ class ResourceRecord(object):
             type_ (Type): the type
             class_ (Class): the class
             rdata (RecordData): the record data
+            timestamp (long int): epoch time to which the ttl is relative
+            needs to be equal to current time when the record is sent over the internet,
+            because the timestamp is not sent
         """
         self.name     = name
         self.type_    = type_
         self.class_   = class_
         self.ttl      = ttl
         self.rdata    = rdata
+        self.timestamp = timestamp
 
     def to_bytes(self, offset, composer):
         """ Convert ResourceRecord to bytes """

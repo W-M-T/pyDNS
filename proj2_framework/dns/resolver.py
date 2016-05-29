@@ -38,7 +38,7 @@ class Resolver(object):
         self.identifier = random.randint(0, 65535)
         self.nameservers = nameservers
         if use_rs:
-        	self.nameservers += dns.consts.ROOT_SERVERS
+            self.nameservers += dns.consts.ROOT_SERVERS
         
     def send_query(self, query, servers):
         """ Send query to each server in servers
@@ -63,9 +63,9 @@ class Resolver(object):
 
                 responses.append(response)
                 if self.caching:
-                    for record in response.additionals + \
-                            response.answers + response.authorities:
-                        record.ttl = int(time.time() + self.ttl)
+                    for record in response.additionals + response.answers + response.authorities:
+                        record.ttl = self.ttl
+                        record.timestamp = int(time.time())
                         self.cache.add_record(record)
             except socket.timeout:
                 pass
