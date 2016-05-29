@@ -126,7 +126,7 @@ class ThreadHelper(Thread):
         self.ad = []
 
     def run(self):
-    	self.h, self.al, self.ad = self.resolver.gethostbyname(hname)
+    	self.h, self.al, self.ad = self.resolver.gethostbyname(self.hname)
         
 
 
