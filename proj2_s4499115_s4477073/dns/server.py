@@ -134,7 +134,7 @@ class RequestHandler(Thread):
         
             
 
-    def sendResponse(response)
+    def sendResponse(response):
         with lock:
             print("[+] - Sending response.")
             self.socket.sendto(response.to_bytes(), self.clientIP)
