@@ -4,6 +4,7 @@ import argparse
 import unittest
 import sys
 import time
+from threading import Thread
 
 import dns.resolver
 import dns.resource
@@ -94,8 +95,39 @@ class TestServer(unittest.TestCase):
         self.assertEqual(["162.246.59.52"], ad)
 
     def testParallelRequest(self):
-        pass
+    	helper1 = ThreadHelper(self.offline_resolver, "hestia.dance")
+    	helper2 = ThreadHelper(self.offline_resolver, "gaia.cs.umass.edu")
+    	t1 = Thread(target=helper1.run)
+    	t2 = Thread(target=helper2.run)
+    	t1.daemon = True
+    	t2.daemon = True
+    	t1.start()
+    	t2.start()
+    	t1.join()
+    	t2.join()
 
+    	self.assertEqual("hestia.dance", helper1.h)
+        self.assertEqual([], helper1.al)
+        self.assertEqual(["162.246.59.52"], helper1.ad)
+
+        self.assertEqual("gaia.cs.umass.edu", helper2.h)
+        self.assertEqual([], helper2.al)
+        self.assertEqual(["128.119.245.12"], helper2.ad)
+        
+
+class ThreadHelper(Thread):
+
+    def __init__(self, resolver, hname):
+        super(ThreadHelper, self).__init__()
+        self.resolver = resolver
+        self.hname = hname
+        self.h = []
+        self.al = []
+        self.ad = []
+
+    def run(self):
+    	self.h, self.al, self.ad = self.resolver.gethostbyname(hname)
+        
 
 
 if __name__ == "__main__":
