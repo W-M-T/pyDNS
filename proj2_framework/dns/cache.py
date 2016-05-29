@@ -120,7 +120,7 @@ class RecordCache(object):
                     record.ttl = new_rec.ttl
                     record.timestamp = new_rec.timestamp
         else:
-            self.records.append(new_record)
+            self.records.append(new_rec)
         self.lock.release()
 
     def read_cache_file(self, cache_file=Consts.CACHE_FILE):
@@ -143,7 +143,9 @@ class RecordCache(object):
                 self.records = recordlist
 
         except (ValueError, IOError), e:
-            print("An error has occured while loading cache from disk: " + str(e))
+            #print("An error has occured while loading cache from disk: " + str(e))
+            with open(cache_file, 'w') as outfile:
+                outfile.write(string = json.dumps(self.records, cls=ResourceEncoder, indent=4))
             self.records = []
 
     def write_cache_file(self):
