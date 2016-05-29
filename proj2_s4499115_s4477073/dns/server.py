@@ -70,12 +70,12 @@ class RequestHandler(Thread):
         answer = []
 
         for i in range(len(hparts)):
-            subaddress = ".".join(hparts[i:])
+            subaddress = ".".join(hparts[i:]
             print(subaddress)
             
             for fqdn, record in zone_match.records.iteritems():
                 
-                if fqdn == subaddress and record.type != Type.NS:
+                if fqdn.rstrip('.') == subaddress and record.type != Type.NS:
                     if self.message.questions[0].qtype == record.type:
                         answer.append(record)
                         
@@ -86,7 +86,7 @@ class RequestHandler(Thread):
                         answer = answer + extra_answer
                         authority = authority + extra_authority
                         
-                elif fqdn == subaddress and record.type == Type.NS:
+                elif fqdn.rstrip('.') == subaddress and record.type == Type.NS:
                     authority.append(record)
 
         return list(set(answer)), list(set(authority)), (answer != [] or authority != [])
