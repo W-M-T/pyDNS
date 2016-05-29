@@ -123,10 +123,10 @@ class RequestHandler(Thread):
                 header.opcode = 0
                 header.qr = 1
 
-                aliases = [ResourceRecord(hostname, Type.CNAME, Class.IN, self.ttl, CNAMERecordData(alias)) for alias in al]
-                addresses = [ResourceRecord(hostname, Type.CNAME, Class.IN, self.ttl, ARecordData(address)) for address in ad]
+                aliases = [ResourceRecord(h, Type.CNAME, Class.IN, self.ttl, CNAMERecordData(alias)) for alias in al]
+                addresses = [ResourceRecord(h, Type.CNAME, Class.IN, self.ttl, ARecordData(address)) for address in ad]
 
-                sendResponse(dns.message.Message(header, self.message.questions, aliases + addresses))
+                self.sendResponse(dns.message.Message(header, self.message.questions, aliases + addresses))
 
         #Nog een error response sturen anders?
         
