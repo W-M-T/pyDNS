@@ -70,23 +70,23 @@ class RequestHandler(Thread):
         answer = []
 
         for i in range(len(hparts)):
-            subaddress = ".".join(hparts[i:]
+            subaddress = ".".join(hparts[i:])
             print(subaddress)
             
             for fqdn, record in zone_match.records.iteritems():
                 
-                if fqdn.rstrip('.') == subaddress and record.type != Type.NS:
-                    if self.message.questions[0].qtype == record.type:
+                if fqdn.rstrip('.') == subaddress and record.type_ != Type.NS:
+                    if self.message.questions[0].qtype == record.type_:
                         answer.append(record)
                         
-                    elif self.message.questions[0].qtype != Type.CNAME and record.type == Type.CNAME:
+                    elif self.message.questions[0].qtype != Type.CNAME and record.type_ == Type.CNAME:
                         answer.append(record)
                         #Find the info for this new cname if you have it
                         extra_answer, extra_authority, extra_found = self.check_zone(hname)
                         answer = answer + extra_answer
                         authority = authority + extra_authority
                         
-                elif fqdn.rstrip('.') == subaddress and record.type == Type.NS:
+                elif fqdn.rstrip('.') == subaddress and record.type_ == Type.NS:
                     authority.append(record)
 
         return list(set(answer)), list(set(authority)), (answer != [] or authority != [])
