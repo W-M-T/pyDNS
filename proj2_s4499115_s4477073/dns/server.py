@@ -57,7 +57,7 @@ class RequestHandler(Thread):
         for rdn in self.catalog.zones:
             zone = self.catalog.zones[rdn]
             rdn_parts = rdn.split('.')
-            if all(l == r for (l, r) in zip(reversed(hparts), reversed(rdnparts))) and len(hparts) <= len(rdnparts):
+            if all(l == r for (l, r) in zip(reversed(hparts), reversed(rdn_parts))) and len(hparts) <= len(rdn_parts):
                 zone_match = zone
                 best_rdn_parts = rdn_parts
                 
