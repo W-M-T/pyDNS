@@ -13,6 +13,11 @@ import dns.message
 import dns.resolver
 import dns.zone
 
+from dns.resource import ResourceRecord, ARecordData, CNAMERecordData
+from dns.classes import Class
+from dns.types import Type
+
+
 lock = Lock()
 
 
@@ -48,22 +53,22 @@ class RequestHandler(Thread):
         hparts = hname.split('.')
 
         zone_match = None
+        best_rdn_parts = []
 
         #Check if hname is a subdomain for the root domain name
         for rdn in self.catalog.zones:
             zone = self.catalog.zones[rdn]
             rdnparts = rdn.split('.')
-            if len(rdnparts) >= len(hparts):
-                for i in range(len(hparts)):
-                    if rdnparts[i:] == hparts:
-                        zone_match = zone
-
+            if all(l == r for (l, r) in zip(reversed(hparts), reversed(rdnparts))) and len(hparts) <= len(rdnparts):
+                zone_match = zone
+                best_rdn_parts = rdn_parts
+                
         
         if zone_match == None:
             return hname, [], [], False
 
         #Find the answer that is as specific as possible
-        for i in range(len(hparts)):
+        for i in range(len(hparts)):#Gebruik QTYPE en QCLASS hier
             try:
                 rr = zone_match.records['.'.join(hparts[i:]) + '.']
             except KeyError:
@@ -74,7 +79,7 @@ class RequestHandler(Thread):
             if rr.type_ in [dns.types.Type.A, dns.types.Type.CNAME]:
                 answer.append(rr)
 
-        return hname, answer, authority, (answer != [] or authority != [])
+        return answer, authority, (answer != [] or authority != [])
 
 
 
@@ -83,39 +88,45 @@ class RequestHandler(Thread):
 
         print("[*] - Handling request.")
         if len(self.message.questions) != 1:
-            print("[-] - Invalid request.")
+            print("[-] - Invalid request.")#Hier bestaat een statuscode voor toch?
             return
         hname = self.message.questions[0].qname
         ident = self.message.header.ident
-        (hostname, answer, authority, found) = self.check_zone(hname)
+        answer, authority, found = self.check_zone(hname)
 
         response = None
-
+        
+        print(str(self.message.header.rd))
+        
         if found:
             header = dns.message.Header(ident, 0, 1, len(answer), len(authority), 0)
-            header.rd = 1
+            header.rd = self.message.header.rd 
             header.ra = 1
             header.aa = 1
             header.opcode = 0
             header.qr = 1
 
-            response = dns.message.Message(header, self.message.questions, answer, authority)
+            sendResponse(dns.message.Message(header, self.message.questions, answer, authority))
 
-        else:
-            if self.message.header.rd == 256:
-                (h, al, ad) = self.resolver.gethostbyname(hname)
-                if ad:
-                    header = dns.message.Header(ident, 0, 1, len(answer), len(authority), 0)
-                    header.rd = 1
-                    header.ra = 1
-                    header.opcode = 0
-                    header.qr = 1
+        elif self.message.header.rd == 1:
+            h, al, ad = self.resolver.gethostbyname(hname)
+            if ad:
+                header = dns.message.Header(ident, 0, 1, len(answer), len(authority), 0)
+                header.rd = self.message.header.rd 
+                header.ra = 1
+                header.opcode = 0
+                header.qr = 1
 
-                    aliases = [dns.resource.ResourceRecord(hostname, dns.types.Type.CNAME, dns.classes.Class.IN, self.ttl, dns.resource.CNAMERecordData(alias)) for alias in al]
-                    addresses = [dns.resource.ResourceRecord(hostname, dns.types.Type.CNAME, dns.classes.Class.IN, self.ttl, dns.resource.ARecordData(address)) for address in ad]
+                aliases = [ResourceRecord(hostname, Type.CNAME, Class.IN, self.ttl, CNAMERecordData(alias)) for alias in al]
+                addresses = [ResourceRecord(hostname, Type.CNAME, Class.IN, self.ttl, ARecordData(address)) for address in ad]
 
-                    response = dns.message.Message(header, self.message.questions, aliases + addresses)
+                sendResponse(dns.message.Message(header, self.message.questions, aliases + addresses))
+
+        #Nog een error response sturen anders?
         
+            
+
+    def sendResponse(response)
         with lock:
             print("[+] - Sending response.")
             self.socket.sendto(response.to_bytes(), self.clientIP)
@@ -125,7 +136,7 @@ class RequestHandler(Thread):
         try:
             self.handle_request()
         except socket.error, e:
-            print("[-] - Error handling connection: " + str(e))
+            print("[-] - Error handling request: " + str(e))
 
 
 class Server(object):
