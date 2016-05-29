@@ -116,7 +116,7 @@ class Resolver(object):
             for address in self.cache.lookup(hostname, Type.A, Class.IN):
                 ipaddrlist.append(address.rdata.data)
 
-        if ipaddrlist != []:
+        if ipaddrlist:
             return hostname, aliaslist, ipaddrlist
 
         #Send them queries until one returns a response.
@@ -128,7 +128,7 @@ class Resolver(object):
         header.rd = 1
         query = dns.message.Message(header, [question])
         
-        while hints != []:
+        while hints:
             responses = self.send_query(query, [hints[0]])
 
             hints = []
