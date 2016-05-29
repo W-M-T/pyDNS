@@ -112,7 +112,7 @@ class RequestHandler(Thread):
             header.opcode = 0
             header.qr = 1
 
-            sendResponse(dns.message.Message(header, self.message.questions, answer, authority))
+            self.sendResponse(dns.message.Message(header, self.message.questions, answer, authority))
 
         elif self.message.header.rd == 256:
             h, al, ad = self.resolver.gethostbyname(hname)
@@ -132,7 +132,7 @@ class RequestHandler(Thread):
         
             
 
-    def sendResponse(response):
+    def sendResponse(self, response):
         with lock:
             print("[+] - Sending response.")
             self.socket.sendto(response.to_bytes(), self.clientIP)
