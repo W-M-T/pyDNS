@@ -64,24 +64,18 @@ class RecordCache(object):
 
         #Lees de cache in, update de ttls, gooi alle invalid data weg
         self.read_cache_file()
+        self.lastCleanup = time.time()
     
     def cleanup(self):
-        #Itereer over alle records, update hun ttls en gooi alle records weg waar deze <=0 wordt.
-        
-        #update ttls en timestamps
-        self.lock.acquire()
-        for i,e in enumerate(self.records):
-            now = int(time.time())
-            e[1].ttl = e[1].ttl - (now - e[0])#entry kan direct worden aangepast, omdat het een object is. timestamp echter niet, omdat het een int is
-            self.records[i][0] = now #update de timestamp
-        self.lock.release()
+        """ Remove all entries in the cache whose TTL has expired """
 
         #gooi de entries weg met ttl <=0
         self.lock.acquire()
-        self.records = [(timestamp, entry) for (timestamp, entry) in self.records if entry.ttl > 0]
+     	curTime = int(time.time())
+        self.records = [record for record in self.records if record.ttl + record.timestamp > curTime]
         self.lock.release()
 
-        self.lastCleanup = int(time.time())
+        self.lastCleanup = curTime
     
     def lookup(self, dname, type_, class_):
         """ Lookup resource records in cache
@@ -94,22 +88,15 @@ class RecordCache(object):
             type_ (Type): type
             class_ (Class): class
         """
-        if (int(time.time()) - lastCleanup >= 3600)#Cache al een uur lang niet gecleaned
-            cleanup()
-            
-        self.lock.acquire()
-        matchindexes = [i for i, e in self.records if e[1].dname == dname and e[1].type_ == type_ and e[1].class_ == class_]
-        for i in matchindexes:
-            now = int(time.time())
-            temp = self.records[i]
-            temp[1].ttl = temp[1].ttl - (now - temp[0])
-            temp[0] = now
-            self.records[i] = temp
-        self.lock.release()
+
+        if (int(time.time()) - self.lastCleanup >= 3600): #Cache al een uur lang niet gecleaned
+            self.cleanup()
+   
+        return [record for record in self.records \
+        		if record.name == dname and record.type_ == type_ and record.class_ == class_ \
+        		and record.ttl > time.time()]#update ttl enzo voor dezen
         
-        return [i for i, e in self.records if entry.dname == dname and entry.type_ == type_ and entry.class_ == class_ and entry.ttl - (int(time.time()) - timestamp) > 0]
-        
-    def add_record(self, record):
+    def add_record(self, new_rec):
         """ Add a new Record to the cache
         
         Args:
@@ -117,28 +104,25 @@ class RecordCache(object):
         """
 
         self.lock.acquire()
-        found = self.lookup(record.name, record.type_, record.class_)
-        if not found:
-            self.records.append((int(time.time()), record))
-        else:#Als het al in de cache zit, update dan alleen de ttls
-            for i, e in enumerate(self.records):#We itereren over de enumeratie zodat we elementen kunnen manipuleren
-                if e[1].dname == dname and e[1].type_ == type_ and e[1].class_ == class_:
-                    now = time.time()
-                    if (now + record.ttl > e[0] + e[1].ttl) #Als de nieuwe record hetzelfde is maar een hogere ttl heeft update de ttl
-                    temp = e
-                    temp[0] = now
-                    temp[1].ttl = record.ttl
-                    self.records[i] = temp
+        found = self.lookup(new_rec.name, new_rec.type_, new_rec.class_)
+        if found:
+            #Search again for the matching record, then update its TTL
+            for record in self.records:
+            	if record.name == new_rec.name and record.type_ == new_rec.type_ and record.class_ == new_rec.class_:
+                    record = new_record
+                    break#Kan maar 1 keer voorkomen, dus na eerste match mag je breaken
+        else:
+            self.records.append(new_record)
         self.lock.release()
-    
-    def read_cache_file(self):
+
+    def read_cache_file(self, cache_file=Consts.CACHE_FILE):
         """ Read the cache file from disk """
         #Empty current cache
         self.records = []
 
         #Load from file
         try:
-            with open(Consts.CACHE_FILE) as infile:
+            with open(cache_file) as infile:
                 with open(Consts.CACHE_TIMESTAMP) as stampfile:
                     data = infile.read()
                     last_timestamp = stampfile.read()
@@ -146,25 +130,23 @@ class RecordCache(object):
                     
                     recordlist = json.loads(data, object_hook=resource_from_json)
 
-                    #update de ttls
-                    for entry in recordlist
+                    #Update the TTLs
+                    for entry in recordlist:
                         entry.ttl = entry.ttl - (timestamp - last_timestamp)
 
-                    #gooi alle expired entries weg
+                    #Don't add the entries whose TTL is expired
                     recordlist = [entry for entry in recordlist if entry.ttl > 0]
 
-                    #sla de entries op met een timestamp die aangeeft vanaf welk absoluut punt de ttl telde
+                    #Save all entries together with the time from which the TTL counts
                     self.records = [(timestamp, entry) for entry in recordlist]
 
         except (ValueError, IOError), e:
             print("An error has occured while loading cache from disk: " + str(e))
             self.records = []
-            #Gaat dit al fout als de file niet bestaat?
-
 
     def write_cache_file(self):
         """ Write the cache file to disk """
-        cleanup()
+        self.cleanup()
         
         try:
             with open(Consts.CACHE_FILE, 'w') as outfile:
