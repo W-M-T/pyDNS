@@ -9,14 +9,14 @@ of your resolver and server.
 
 import socket
 import struct
+import time
 
 from dns.classes import Class
 from dns.types import Type
 
-
 class ResourceRecord(object):
     """ DNS resource record """
-    def __init__(self, name, type_, class_, ttl, rdata, timestamp = 0):
+    def __init__(self, name, type_, class_, ttl, rdata, timestamp=None):
         """ Create a new resource record
 
         Args:
@@ -24,28 +24,22 @@ class ResourceRecord(object):
             type_ (Type): the type
             class_ (Class): the class
             rdata (RecordData): the record data
-            timestamp (long int): epoch time to which the ttl is relative
-            needs to be equal to current time when the record is sent over the internet,
-            because the timestamp is not sent
         """
         self.name     = name
         self.type_    = type_
         self.class_   = class_
         self.ttl      = ttl
         self.rdata    = rdata
-        self.timestamp = timestamp#Set to zero if not provided, so it will expire immediately when put in the cache
+        self.timestamp = timestamp if timestamp != None else (int)(time.time())
 
     def to_bytes(self, offset, composer):
         """ Convert ResourceRecord to bytes """
-        name = composer.to_bytes(offset, [self.name])
-        offset += len(name)
+        record = composer.to_bytes(offset, [self.name])
+        record += struct.pack("!HHI", self.type_, self.class_, self.ttl)
+        offset += len(record) + 2
         rdata = self.rdata.to_bytes(offset, composer)
-        return (name + struct.pack(
-            "!HHIH",
-            self.type_,
-            self.class_,
-            self.ttl,
-            len(rdata)) + rdata)
+        record += struct.pack("!H", len(rdata)) + rdata
+        return record
 
     @classmethod
     def from_bytes(cls, packet, offset, parser):
@@ -58,10 +52,8 @@ class ResourceRecord(object):
         offset += rdlength
         return cls(name, type_, class_, ttl, rdata), offset
 
-
 class RecordData(object):
     """ Record Data """
-
     def __init__(self, data):
         """ Initialize the record data
 

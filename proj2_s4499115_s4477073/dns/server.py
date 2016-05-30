@@ -86,7 +86,7 @@ class RequestHandler(Thread):
                     elif self.message.questions[0].qtype != Type.CNAME and record.type_ == Type.CNAME:
                         answer.append(record)
                         #Find the info for this new cname if you have it
-                        extra_answer, extra_authority, extra_found = self.check_zone(hname)
+                        extra_answer, extra_authority, extra_found = self.check_zone(record.rdata.data)
                         answer = answer + extra_answer
                         authority = authority + extra_authority
                         
@@ -137,14 +137,14 @@ class RequestHandler(Thread):
             print(al)
             print(ad)
             if ad:
-                header = dns.message.Header(ident, 0, 1, len(answer), len(authority), 0)
+                header = dns.message.Header(ident, 0, 1, len(al) + len(ad), 0, 0)
                 header.rd = 1 if self.message.header.rd == 256 else 0
                 header.ra = 1
                 header.opcode = 0
                 header.qr = 1
 
                 aliases = [ResourceRecord(h, Type.CNAME, Class.IN, self.ttl, CNAMERecordData(alias)) for alias in al]
-                addresses = [ResourceRecord(h, Type.CNAME, Class.IN, self.ttl, ARecordData(address)) for address in ad]
+                addresses = [ResourceRecord(h, Type.A, Class.IN, self.ttl, ARecordData(address)) for address in ad]
 
                 self.sendResponse(dns.message.Message(header, self.message.questions, aliases + addresses))
 

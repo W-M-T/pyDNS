@@ -22,13 +22,13 @@ class TestResolver(unittest.TestCase):
     def setUp(self):
         self.resolver = dns.resolver.Resolver(5, False, 1000)
 
-    def testNoCacheResolveExistingFQDN(self):
+    def atestNoCacheResolveExistingFQDN(self):
         h, al, ad = self.resolver.gethostbyname("gaia.cs.umass.edu")
         self.assertEqual("gaia.cs.umass.edu", h)
         self.assertEqual([], al)
         self.assertEqual(["128.119.245.12"], ad)
 
-    def testNoCacheResolveNotExistingFQDN(self):
+    def atestNoCacheResolveNotExistingFQDN(self):
         h, al, ad = self.resolver.gethostbyname("s.h.u.c.k.l.e")
         self.assertEqual("s.h.u.c.k.l.e", h)
         self.assertEqual([], al)
@@ -70,13 +70,11 @@ class TestServer(unittest.TestCase):
     def setUp(self):
         self.resolver = dns.resolver.Resolver(5, False, 10)
         self.offline_resolver = dns.resolver.Resolver(5, False, 10, ["localhost"], False)
-        #self.server = dns.server.Server(53, False, 5).serve()
 
-    def atestSolveFQDNDirectAuthority(self):
-        h1, al1, ad1 = self.resolver.gethostbyname("shuckle.ru.nl")
-        h2, al2, ad2 = self.offline_resolver.gethostbyname("ru.nl")
+    def testSolveFQDNDirectAuthority(self):
+        h1, al1, ad1 = self.offline_resolver.gethostbyname("shuckle.ru.nl")
+        h2, al2, ad2 = self.resolver.gethostbyname("ru.nl")
 
-        self.assertEqual(al1, al2)
         self.assertEqual(ad1, ad2)
 
     def testSolveFQDNNoDirectAuthority(self):
