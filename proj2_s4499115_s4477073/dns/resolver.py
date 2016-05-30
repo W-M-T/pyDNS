@@ -38,7 +38,28 @@ class Resolver(object):
         self.nameservers = nameservers
         if use_rs:
             self.nameservers += dns.consts.ROOT_SERVERS
-        
+
+
+    def is_valid_hostname(self, hostname):
+        """ Check if hostname could be a valid hostname
+
+        Args:
+            hostname (str): the hostname that is to be checked
+
+        Returns:
+            boolean indiciting if hostname could be valid
+        """
+        valid_hostnames = "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$"
+        return re.match(valid_hostnames, hostname)
+
+
+    def save_cache(self):
+        """ Save the cache if appropriate """
+        if self.caching:
+            if self.cache is not None:
+                self.cache.write_cache_file()
+
+
     def ask_server(self, query, server):
         """ Send query to a server
 
@@ -72,23 +93,6 @@ class Resolver(object):
         
         return response
 
-    def save_cache(self):
-        """ Save the cache if appropriate """
-        if self.caching:
-            if self.cache is not None:
-                self.cache.write_cache_file()
-
-    def is_valid_hostname(self, hostname):
-        """ Check if hostname could be a valid hostname
-
-        Args:
-            hostname (str): the hostname that is to be checked
-
-        Returns:
-            boolean indiciting if hostname could be valid
-        """
-        valid_hostnames = "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$"
-        return re.match(valid_hostnames, hostname)
 
     def gethostbyname(self, hostname):
         """ Resolve hostname to an IP address
