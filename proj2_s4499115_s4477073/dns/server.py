@@ -48,7 +48,7 @@ class RequestHandler(Thread):
             A boolean that tells if we found something
         """
 
-        hparts = hname.split('.')
+        hparts = hname.rstrip('.').split('.')
 
         zone_match = None
         best_rdn_parts = []
@@ -56,13 +56,17 @@ class RequestHandler(Thread):
         #Check if hname is a subdomain for the root domain name
         for rdn in self.catalog.zones:
             zone = self.catalog.zones[rdn]
-            rdn_parts = rdn.split('.')
-            if all(l == r for (l, r) in zip(reversed(hparts), reversed(rdn_parts))) and len(hparts) <= len(rdn_parts):
+            rdn_parts = rdn.rstrip('.').split('.')
+            print("Hparts rdnparts")
+            print(hparts)
+            print(rdn_parts)
+            if all(l == r for (l, r) in zip(reversed(hparts), reversed(rdn_parts))) and len(hparts) >= len(rdn_parts):
                 zone_match = zone
                 best_rdn_parts = rdn_parts
                 
         
         if zone_match == None:
+            print("Heb er niet eens een zone van")
             return [], [], False
 
         #Find the answers
@@ -89,7 +93,7 @@ class RequestHandler(Thread):
                 elif fqdn.rstrip('.') == subaddress and record.type_ == Type.NS:
                     authority.append(record)
 
-        return list(set(answer)), list(set(authority)), (answer or authority)
+        return list(set(answer)), list(set(authority)), (bool(answer) or bool(authority))
 
 
 
@@ -101,8 +105,18 @@ class RequestHandler(Thread):
             print("[-] - Invalid request.")#Hier bestaat een statuscode voor toch?
             return
         hname = self.message.questions[0].qname
+        print("Solving " + str(hname))
         ident = self.message.header.ident
+        print("Checking zone")
         answer, authority, found = self.check_zone(hname)
+        print("ans auth found")
+        print(answer)
+        if (answer):
+            print(answer[0].rdata.data)
+        print(authority)
+        if (authority):
+            print(authority[0].rdata.data)
+        print(found)
         
         if found:
             header = dns.message.Header(ident, 0, 1, len(answer), len(authority), 0)
@@ -115,7 +129,12 @@ class RequestHandler(Thread):
             self.sendResponse(dns.message.Message(header, self.message.questions, answer, authority))
 
         elif self.message.header.rd == 256:
+            print("Using online resolver")
             h, al, ad = self.resolver.gethostbyname(hname)
+            print("online found h al ad")
+            print(h)
+            print(al)
+            print(ad)
             if ad:
                 header = dns.message.Header(ident, 0, 1, len(answer), len(authority), 0)
                 header.rd = 1 if self.message.header.rd == 256 else 0
@@ -125,7 +144,6 @@ class RequestHandler(Thread):
 
                 aliases = [ResourceRecord(h, Type.CNAME, Class.IN, self.ttl, CNAMERecordData(alias)) for alias in al]
                 addresses = [ResourceRecord(h, Type.CNAME, Class.IN, self.ttl, ARecordData(address)) for address in ad]
-
                 self.sendResponse(dns.message.Message(header, self.message.questions, aliases + addresses))
 
         #Nog een error response sturen anders?
