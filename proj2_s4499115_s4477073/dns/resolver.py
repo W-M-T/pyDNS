@@ -126,9 +126,11 @@ class Resolver(object):
         hints = self.nameservers
         
         while hints:
+            #Get the server to ask
             hint = hints[0]
             hints = hints[1:]
 
+            #Build the query to send to that server
             identifier = randint(0, 65535)
             
             question = dns.message.Question(hostname, Type.A, Class.IN)
@@ -137,35 +139,31 @@ class Resolver(object):
             header.opcode = 0
             header.rd = 0
             query = dns.message.Message(header, [question])
-  
+
+            #Try to get a response
             response = self.ask_server(query, hint)
 
-            if response == None:
+            if response == None:#We didn't get a response for this server, so check the next one
                 continue
 
             #Analyze the response
-            for answers in response.answers:
-                print("dit zijn de antwoorden in deze response")
-                if answer.type_ == Type.CNAME and (answer.name == hostname or answer.name in aliaslist):
-                    if answer.rdata.data not in aliases:
-                        aliaslist.append(answer.rdata.data)
-                print(answer.rdata.data)
+            for answers in response.answers + response.additionals:#First get the aliases
+                if answer.type_ == Type.CNAME and answer.rdata.data not in aliases:
+                    aliaslist.append(answer.rdata.data)
+
+            for answers in response.answers:#Then try to get an address
                 if answer.type_ == Type.A and (answer.name == hostname or answer.name in aliaslist):  
                     ipaddrlist.append(answer.rdata.data)
                 
-                for additional in response.additionals:
-                    if additional.type_ == Type.CNAME and (additional.name == hostname or additional.name in aliaslist):
-                        if additional.rdata.data not in aliaslist:
-                            aliaslist.append(additional.rdata.data)
-                print("IN de resolver waar we ontvangen antwoorden analyzeren")
-                print("al list ip list")
-                print(aliaslist)
-                print(ipaddrlist)
-                if ipaddrlist != []:
-                    return hostname, aliaslist, ipaddrlist
+            if ipaddrlist != []:
+                return hostname, aliaslist, ipaddrlist
 
-                for authority in response.authorities:
-                    if authority.type_ == Type.NS:
-                        hints = [authority.rdata.data] + hints
+            else:
+                for nameserver in response.authorities:
+                    if nameserver.type_ == Type.NS:#Do a lookup for that ns?
+                        print(nameserver.rdata.data)
+                        if self.caching:
+                            self.cache.add_record(nameserver)
+                        hints = [nameserver.rdata.data] + hints
 
         return hostname, [], []
