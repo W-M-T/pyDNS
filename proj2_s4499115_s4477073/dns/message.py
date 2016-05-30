@@ -82,27 +82,27 @@ class Message(object):
 
         # Parse questions
         questions = []
-        for i in range(header.qd_count):
+        for _ in range(header.qd_count):
             question, offset = Question.from_bytes(packet, offset, parser)
             questions.append(question)
 
         # Parse answers
         answers = []
-        for i in range(header.an_count):
+        for _ in range(header.an_count):
             answer, offset = ResourceRecord.from_bytes(packet, offset, parser)
             answers.append(answer)
 
         # Parse authorities
         authorities = []
-        for i in range(header.ns_count):
-            authority, offset = ResourceRecord.from_bytes(packet, offset, parser)
-            authorities.append(authority)
+        for _ in range(header.ns_count):
+            auth, offset = ResourceRecord.from_bytes(packet, offset, parser)
+            authorities.append(auth)
 
         # Parse additionals
         additionals = []
-        for i in range(header.ar_count):
-            additional, offset = ResourceRecord.from_bytes(packet, offset, parser)
-            additionals.append(additional)
+        for _ in range(header.ar_count):
+            add, offset = ResourceRecord.from_bytes(packet, offset, parser)
+            additionals.append(add)
 
         return cls(header, questions, answers, authorities, additionals)
 
