@@ -46,8 +46,13 @@ The resolver is capable of using and managing a cache.
 If the cache is enabled the resolver first tries to answer the query using the entries in the cache.
 If this fails it proceeds performing the steps described above, but in addition, all received responses are stored in the cache.
 
-The cache can be written to a be read from human-readable JSON.
-[INSERT IETS OVER TTL]
+The cache can be written to disk and read from disk as human-readable JSON.
+To manage TTL's for records, all resource records get a timestamp attribute that is used in json-serialization, but not in the from- and to-bytes methods.
+When a record is looked up, only those records are considered where their ttl + their timestamp is smaller than the current epoch time.
+We also intermittently clean the entire cache. This happens whenever a resource is looked up and the last cleanup was over an hour ago.
+In the cleanup, all expired records are thrown away.
+Before a record is returned during lookup, it's timestamp is updated to the current time and the ttl changes accordingly. This ensures that the ttl is "roughly" correct
+for the receiving host ("roughly" because travel times aren't accounted for). This is necessary because timestamps are not part of the DNS protocol.
 
 
 TRANSACTION IDS:
