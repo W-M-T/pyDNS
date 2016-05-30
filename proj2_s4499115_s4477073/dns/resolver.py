@@ -8,7 +8,7 @@ DNS server, but with a different list of servers.
 """
 
 import socket
-import random
+from random import randint
 import re
 import time
 
@@ -83,7 +83,7 @@ class Resolver(object):
             
             if self.caching:
                 for record in response.additionals + response.answers + response.authorities:
-                    if record.type == Type.A or record.type == Type.CNAME:
+                    if record.type_ == Type.A or record.type_ == Type.CNAME:
                         record.ttl = self.ttl
                         record.timestamp = int(time.time())
                         self.cache.add_record(record)
@@ -107,6 +107,9 @@ class Resolver(object):
 
         """
         print("==GETHOSTNAME START=================")
+        aliaslist = []
+        ipaddrlist = []
+
         #Check if the hostname is valid
         valid = self.is_valid_hostname(hostname)
         if not valid:
@@ -125,8 +128,6 @@ class Resolver(object):
                 return hostname, aliaslist, ipaddrlist
 
         #Do the recursive algorithm
-        aliaslist = []
-        ipaddrlist = []
         hints = self.nameservers
         
         while hints:
@@ -152,11 +153,11 @@ class Resolver(object):
                 continue
 
             #Analyze the response
-            for answers in response.answers + response.additionals:#First get the aliases
+            for answer in response.answers + response.additionals:#First get the aliases
                 if answer.type_ == Type.CNAME and answer.rdata.data not in aliases:
                     aliaslist.append(answer.rdata.data)
 
-            for answers in response.answers:#Then try to get an address
+            for answer in response.answers:#Then try to get an address
                 if answer.type_ == Type.A and (answer.name == hostname or answer.name in aliaslist):  
                     ipaddrlist.append(answer.rdata.data)
                 
@@ -167,7 +168,7 @@ class Resolver(object):
             else:
                 for nameserver in response.authorities:
                     if nameserver.type_ == Type.NS:#Do a lookup for that ns?
-                        print(nameserver.rdata.data)
+                        #print(nameserver.rdata.data)
                         if self.caching:
                             self.cache.add_record(nameserver)
                         hints = [nameserver.rdata.data] + hints
