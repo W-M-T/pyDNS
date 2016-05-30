@@ -47,8 +47,9 @@ class RequestHandler(Thread):
             authority ([ResourceRecord]): the records that tell about the nameservers that "know more",
             A boolean that tells if we found something
         """
-
-        hparts = hname.rstrip('.').split('.')
+        print("Checking zone for \"" + hname + "\"")
+        
+        h_parts = hname.rstrip('.').split('.')
 
         zone_match = None
         best_rdn_parts = []
@@ -57,40 +58,38 @@ class RequestHandler(Thread):
         for rdn in self.catalog.zones:
             zone = self.catalog.zones[rdn]
             rdn_parts = rdn.rstrip('.').split('.')
-            print("Hparts rdnparts")
-            print(hparts)
-            print(rdn_parts)
-            if all(l == r for (l, r) in zip(reversed(hparts), reversed(rdn_parts))) and len(hparts) >= len(rdn_parts):
+            print("HParts: " + h_parts)
+            print("RDNparts: " + rdn_parts)
+            if all(l == r for (l, r) in zip(reversed(h_parts), reversed(rdn_parts))) and len(h_parts) >= len(rdn_parts):
                 zone_match = zone
                 best_rdn_parts = rdn_parts
-                
-        
+                 
         if zone_match == None:
-            print("Heb er niet eens een zone van")
+            print("Geen zone gevonden")
             return [], [], False
 
         #Find the answers
         authority = []
         answer = []
 
+        for fqdn, record in zone_match.records.iteritems():   
+            if fqdn.rstrip('.') == hname and record.type_ != Type.NS:#Precies het adres dat we willen
+                if self.message.questions[0].qtype == record.type_:
+                    answer.append(record)
+                    
+                elif self.message.questions[0].qtype != Type.CNAME and record.type_ == Type.CNAME:
+                    answer.append(record)
+                    #Find the info for this new cname if you have it
+                    extra_answer, extra_authority, extra_found = self.check_zone(record.rdata.data)
+                    answer = answer + extra_answer
+                    authority = authority + extra_authority
+                    
         for i in range(len(hparts)):
             subaddress = ".".join(hparts[i:])
             print(subaddress)
             
-            for fqdn, record in zone_match.records.iteritems():
-                
-                if fqdn.rstrip('.') == subaddress and record.type_ != Type.NS:
-                    if self.message.questions[0].qtype == record.type_:
-                        answer.append(record)
-                        
-                    elif self.message.questions[0].qtype != Type.CNAME and record.type_ == Type.CNAME:
-                        answer.append(record)
-                        #Find the info for this new cname if you have it
-                        extra_answer, extra_authority, extra_found = self.check_zone(hname)
-                        answer = answer + extra_answer
-                        authority = authority + extra_authority
-                        
-                elif fqdn.rstrip('.') == subaddress and record.type_ == Type.NS:
+            for fqdn, record in zone_match.records.iteritems():                     
+                if fqdn.rstrip('.') == subaddress and record.type_ == Type.NS:
                     authority.append(record)
 
         return list(set(answer)), list(set(authority)), (bool(answer) or bool(authority))
