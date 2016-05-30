@@ -106,7 +106,7 @@ class Resolver(object):
             ipaddrlist ([str]): list of IP addresses of the hostname 
 
         """
-
+        print("==GETHOSTNAME START=================")
         #Check if the hostname is valid
         valid = self.is_valid_hostname(hostname)
         if not valid:
@@ -121,6 +121,7 @@ class Resolver(object):
                 ipaddrlist.append(address.rdata.data)
 
             if ipaddrlist:
+                print("We found an address in the cache!")
                 return hostname, aliaslist, ipaddrlist
 
         #Do the recursive algorithm
@@ -147,6 +148,7 @@ class Resolver(object):
             response = self.ask_server(query, hint)
 
             if response == None:#We didn't get a response for this server, so check the next one
+                print("Server at " + hint + " did not respond.")
                 continue
 
             #Analyze the response
