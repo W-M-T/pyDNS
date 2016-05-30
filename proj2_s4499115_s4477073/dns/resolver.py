@@ -130,29 +130,35 @@ class Resolver(object):
         
         while hints:
             responses = self.send_query(query, [hints[0]])
-
-            hints = []
-            while responses is None and hints:
-            	hints = hints[1:]
+            hints = hints[1:]
+            while responses == [] and hints != []:
             	responses = self.send_query(query, [hints[0]])
+                hints = hints[1:]
 
             if responses is None:
                 return hostname, [], []
 
             #Analyze the response
             for response in responses:
+                print("dit zijn de antwoorden in deze response")
+                print(response.answers)
                 for answer in response.answers:
-                    if answer.type_ == Type.A and (answer.name == hostname or answer.name in aliaslist):  
-                        ipaddrlist.append(answer.rdata.data)
                     if answer.type_ == Type.CNAME and (answer.name == hostname or answer.name in aliaslist):
                         if answer.rdata.data not in aliases:
                             aliaslist.append(answer.rdata.data)
-
+                for answer in response.answers:
+                    print(answer.rdata.data)
+                    if answer.type_ == Type.A and (answer.name == hostname or answer.name in aliaslist):  
+                        ipaddrlist.append(answer.rdata.data)
+                
                 for additional in response.additionals:
                     if additional.type_ == Type.CNAME and (additional.name == hostname or additional.name in aliaslist):
                         if additional.rdata.data not in aliaslist:
                             aliaslist.append(additional.rdata.data)
-
+                print("IN de resolver waar we ontvangen antwoorden analyzeren")
+                print("al list ip list")
+                print(aliaslist)
+                print(ipaddrlist)
                 if ipaddrlist != []:
                     return hostname, aliaslist, ipaddrlist
 
