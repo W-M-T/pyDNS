@@ -109,6 +109,7 @@ class RequestHandler(Thread):
         ident = self.message.header.ident
         print("Checking zone")
         answer, authority, found = self.check_zone(hname)
+        print("Wat we in de zone hebben gevonden")
         print("ans auth found")
         print(answer)
         if (answer):
@@ -129,9 +130,9 @@ class RequestHandler(Thread):
             self.sendResponse(dns.message.Message(header, self.message.questions, answer, authority))
 
         elif self.message.header.rd == 256:
-            print("Using online resolver")
+            print("In de server waar we het niet in de zone hebben")
             h, al, ad = self.resolver.gethostbyname(hname)
-            print("online found h al ad")
+            print("Server gebruikte online resolver en vond dit")
             print(h)
             print(al)
             print(ad)
@@ -144,6 +145,7 @@ class RequestHandler(Thread):
 
                 aliases = [ResourceRecord(h, Type.CNAME, Class.IN, self.ttl, CNAMERecordData(alias)) for alias in al]
                 addresses = [ResourceRecord(h, Type.CNAME, Class.IN, self.ttl, ARecordData(address)) for address in ad]
+
                 self.sendResponse(dns.message.Message(header, self.message.questions, aliases + addresses))
 
         #Nog een error response sturen anders?

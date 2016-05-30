@@ -22,13 +22,13 @@ class TestResolver(unittest.TestCase):
     def setUp(self):
         self.resolver = dns.resolver.Resolver(5, False, 1000)
 
-    def atestNoCacheResolveExistingFQDN(self):
+    def testNoCacheResolveExistingFQDN(self):
         h, al, ad = self.resolver.gethostbyname("gaia.cs.umass.edu")
         self.assertEqual("gaia.cs.umass.edu", h)
         self.assertEqual([], al)
         self.assertEqual(["128.119.245.12"], ad)
 
-    def atestNoCacheResolveNotExistingFQDN(self):
+    def testNoCacheResolveNotExistingFQDN(self):
         h, al, ad = self.resolver.gethostbyname("s.h.u.c.k.l.e")
         self.assertEqual("s.h.u.c.k.l.e", h)
         self.assertEqual([], al)
