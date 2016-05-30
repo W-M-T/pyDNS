@@ -102,7 +102,6 @@ class Resolver(object):
             ipaddrlist ([str]): list of IP addresses of the hostname 
 
         """
-        
 
         #Check if the hostname is valid
         valid = self.is_valid_hostname(hostname)
@@ -156,6 +155,7 @@ class Resolver(object):
                     ipaddrlist.append(answer.rdata.data)
                 
             if ipaddrlist != []:
+                print("We found an address using the recursive search!")
                 return hostname, aliaslist, ipaddrlist
 
             else:
@@ -166,4 +166,5 @@ class Resolver(object):
                             self.cache.add_record(nameserver)
                         hints = [nameserver.rdata.data] + hints
 
+        print("Recursive search for " + hostname + " was a total failure")
         return hostname, [], []
