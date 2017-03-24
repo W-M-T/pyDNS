@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 import argparse
 import unittest
@@ -8,7 +8,7 @@ from threading import Thread
 
 import dns.resolver
 import dns.resource
-import dns.types
+import dns.rtypes
 import dns.classes
 import dns.server
 
@@ -41,7 +41,7 @@ class TestResolverCache(unittest.TestCase):
 
     def atestResolveInvalidCachedFQDN(self):
         shuckleRecord = dns.resource.ResourceRecord("s.h.u.c.k.l.e",\
-                dns.types.Type.A, dns.classes.Class.IN,\
+                dns.rtypes.Type.A, dns.classes.Class.IN,\
                 int(time.time() + 5), dns.resource.RecordData("42.42.42.42"))
         self.resolver.cache.add_record(shuckleRecord)
 
@@ -55,7 +55,7 @@ class TestResolverCache(unittest.TestCase):
 
     def atestResolveExpiredInvalidCachedFQDN(self):
         shuckleRecord = dns.resource.ResourceRecord("s.h.u.c.k.l.e",\
-                dns.types.Type.A, dns.classes.Class.IN,\
+                dns.rtypes.Type.A, dns.classes.Class.IN,\
                 int(time.time() + 5), dns.resource.RecordData("42.42.42.42"))
         self.resolver.cache.add_record(shuckleRecord)
 

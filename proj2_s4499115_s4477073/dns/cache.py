@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 """A cache for resource records
 
@@ -11,7 +11,7 @@ It is highly recommended to use these.
 import json
 
 from dns.resource import ResourceRecord, RecordData
-from dns.types import Type
+from dns.rtypes import Type
 from dns.classes import Class
 import dns.consts as Consts
 import threading
@@ -72,7 +72,7 @@ class RecordCache(object):
 
         #gooi de entries weg met ttl <=0
         self.lock.acquire()
-     	curTime = int(time.time())
+        curTime = int(time.time())
         self.records = [record for record in self.records if record.ttl + record.timestamp > curTime]
         self.lock.release()
 
@@ -94,8 +94,8 @@ class RecordCache(object):
             self.cleanup()
 
         foundrecords = [record for record in self.records \
-        		if record.name == dname and record.type_ == type_ and record.class_ == class_ \
-        		and record.ttl > time.time()]
+                if record.name == dname and record.type_ == type_ and record.class_ == class_ \
+                and record.ttl > time.time()]
         
         #Verschuif de ttl en timestamp naar nu
         curTime = int(time.time())
@@ -142,7 +142,7 @@ class RecordCache(object):
                 #Save all entries together with the time from which the TTL counts
                 self.records = recordlist
 
-        except (ValueError, IOError), e:
+        except (ValueError, IOError) as e:
             print("An error has occured while loading cache from disk: " + str(e))
             self.records = []
             with open(cache_file, 'w') as outfile:
@@ -155,5 +155,5 @@ class RecordCache(object):
         try:
             with open(Consts.CACHE_FILE, 'w') as outfile:
                 outfile.write(json.dumps(self.records, cls=ResourceEncoder, indent=4))
-        except IOError, e:
+        except IOError as e:
             print("An error has occured while writing cache to disk: " + str(e))

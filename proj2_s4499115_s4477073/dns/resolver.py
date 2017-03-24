@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 """ DNS Resolver
 
@@ -13,7 +13,7 @@ import re
 import time
 
 from dns.classes import Class
-from dns.types import Type
+from dns.rtypes import Type
 from dns.cache import RecordCache
 import dns.cache
 import dns.message

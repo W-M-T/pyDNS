@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 """ A recursive DNS server
 
@@ -15,7 +15,7 @@ import dns.zone
 
 from dns.resource import ResourceRecord, ARecordData, CNAMERecordData
 from dns.classes import Class
-from dns.types import Type
+from dns.rtypes import Type
 
 
 lock = Lock()
@@ -161,7 +161,7 @@ class RequestHandler(Thread):
         """ Run the handler thread """
         try:
             self.handle_request()
-        except socket.error, e:
+        except socket.error as e:
             print("[-] - Error handling request: " + str(e))
 
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 """ A DNS resource record
 
@@ -12,7 +12,7 @@ import struct
 import time
 
 from dns.classes import Class
-from dns.types import Type
+from dns.rtypes import Type
 
 class ResourceRecord(object):
     """ DNS resource record """

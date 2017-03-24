@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 """ DNS messages
 
@@ -12,7 +12,7 @@ import struct
 from dns.classes import Class
 from dns.domainname import Parser, Composer
 from dns.resource import ResourceRecord
-from dns.types import Type
+from dns.rtypes import Type
 
 
 class Message(object):

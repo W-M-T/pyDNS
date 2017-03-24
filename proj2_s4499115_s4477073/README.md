@@ -23,7 +23,7 @@ This RFC explains an overview of DNS and introduces some of the naming which is 
         * resolver.py: Class for a DNS resolver. You have to implement this.
         * resource.py: Classes for DNS resource records.
         * server.py: Contains a DNS server. You have to implement this.
-        * types.py: Enum of TYPEs and QTYPEs.
+        * rtypes.py: Enum of TYPEs and QTYPEs.
         * zone.py: name space zones. You have to implement this.
     * dns_client.py: A simple DNS client, which serves as an example user of the resolver.
     * dns_server.py: Code for starting the DNS server and parsing args.
@@ -32,7 +32,7 @@ This RFC explains an overview of DNS and introduces some of the naming which is 
 ## Implementation Hints and Tips
 
 You should start with implementing the resolver, which you need for the server.
-You will need message.py, resource.py, types.py, classes.py and rcodes.py.
+You will need message.py, resource.py, rtypes.py, classes.py and rcodes.py.
 You can ignore the code for converting from and to bytes from these files if
 you want, but it might be useful (especially for debugging).
 
